@@ -32,8 +32,8 @@ REM ============================================================
 REM --- Resolve script directory and config paths ---
 set "SCRIPT_DIR=%~dp0"
 set "CONFIG_PATH=%SCRIPT_DIR%config.json"
-set "UI_SCRIPT=%SCRIPT_DIR%config-ui.ps1"
-set "LOADER_PS=%SCRIPT_DIR%load-config.ps1"
+set "UI_SCRIPT=%SCRIPT_DIR%ui\config-ui.ps1"
+set "LOADER_PS=%SCRIPT_DIR%lib\load-config.ps1"
 
 REM ===== UI dispatch (must run BEFORE config load so we can use UI to fix a bad config) ===
 if /I "%~1"=="--config" goto :launch_ui

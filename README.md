@@ -58,7 +58,7 @@ That's it. The GUI's **Save && Run** button does both in one click.
 | `auto_merge` | `true` = fetch upstream + ff-merge + push origin. `false` = just `git pull origin <master>`. |
 | `final_command` | Optional command to run once after all repos finish (`""` to skip). |
 
-> Tip: in the GUI, click a row and use **Browse Path...** to insert a correctly-escaped absolute path.
+> Tip: in the GUI, select a repo and use **Browse…** to insert a correctly-escaped absolute path.
 
 Full schema, restrictions, and the relative-path rules: see [`docs/configuration.md`](docs/configuration.md).
 
@@ -68,6 +68,7 @@ Full schema, restrictions, and the relative-path rules: see [`docs/configuration
 
 - [Configuration reference](docs/configuration.md) — every field, path rules, JSON escaping, restrictions.
 - [How it works](docs/how-it-works.md) — folder layout, per-repo phase workflow, UI ↔ sync handshake.
+- [UI design](docs/ui-design.md) — how the WPF config window maps to [`DESIGN.md`](DESIGN.md).
 - [Troubleshooting](docs/troubleshooting.md) — common failures and fixes.
 - [Reference](docs/reference.md) — exit codes and per-repo status strings.
 

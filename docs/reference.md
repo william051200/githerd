@@ -7,7 +7,7 @@
 | `0`  | All repos OK and the final command (if any) succeeded. |
 | `1`  | One or more repos failed, or the final command failed, or config could not be loaded. |
 | `2`  | Failed to create the IPC temp directory. |
-| `10` | (`config-ui.ps1` only) User clicked **Save && Run**. `sync.bat` handles this internally and falls through to running the sync. |
+| `10` | (`ui\config-ui.ps1` only) User clicked **Save && Run**. `sync.bat` handles this internally and falls through to running the sync. |
 
 ## Per-repo status strings
 

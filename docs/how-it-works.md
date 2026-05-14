@@ -4,12 +4,17 @@
 
 ```
 githerd\
-├── sync.bat              # entry point (run sync, or open the UI)
+├── sync.bat              # entry point (run sync, or open the UI with --config)
 ├── config.example.json   # template config (committed)
 ├── config.json           # your editable configuration (gitignored; created on first save)
-├── config-ui.ps1         # WinForms editor for config.json
-├── load-config.ps1       # internal helper (JSON -> set statements)
+├── ui\
+│   ├── config-ui.ps1     # WPF editor (host script)
+│   ├── MainWindow.xaml   # window layout
+│   └── Theme.xaml        # design tokens & control styles
+├── lib\
+│   └── load-config.ps1   # internal helper (JSON -> set statements)
 ├── docs\                 # this folder
+├── DESIGN.md             # visual design reference for the UI
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -42,7 +47,7 @@ If any step fails, the repo's status becomes `FAILED (<reason>)` and its full lo
 
 ## How the UI talks to the sync
 
-`sync.bat --config` launches `config-ui.ps1`. The UI signals its choice via exit code:
+`sync.bat --config` launches `ui\config-ui.ps1` (a WPF window). The UI signals its choice via exit code:
 
 | Exit | Meaning |
 |---|---|
