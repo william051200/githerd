@@ -3,3 +3,6 @@ config.json
 
 # Loader temp files (in case they ever land next to the script)
 githerd_loader_*.cmd
+
+# Release build output
+dist/
