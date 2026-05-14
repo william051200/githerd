@@ -314,7 +314,7 @@
                 <Style TargetType="ListBoxItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     <Setter Property="Padding"   Value="0" />
-                    <Setter Property="Margin"    Value="0,0,0,8" />
+                    <Setter Property="Margin"    Value="0,0,0,10" />
                     <Setter Property="Cursor"    Value="Hand" />
                     <Setter Property="Template">
                         <Setter.Value>
@@ -324,7 +324,7 @@
                                         BorderBrush="{StaticResource Hairline}"
                                         BorderThickness="1"
                                         CornerRadius="10"
-                                        Padding="14,12">
+                                        Padding="16,14">
                                     <ContentPresenter />
                                 </Border>
                                 <ControlTemplate.Triggers>
@@ -366,6 +366,43 @@
         <Setter Property="Background" Value="{StaticResource Hairline}" />
         <Setter Property="Height"     Value="1" />
         <Setter Property="Margin"     Value="0,16" />
+    </Style>
+
+    <!-- ===== Pill badges ===== -->
+    <Style x:Key="BadgePill" TargetType="Border">
+        <Setter Property="Background"      Value="{StaticResource SurfaceCard}" />
+        <Setter Property="BorderBrush"     Value="{StaticResource Hairline}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius"    Value="999" />
+        <Setter Property="Padding"         Value="10,3" />
+        <Setter Property="Margin"          Value="0,0,6,0" />
+    </Style>
+
+    <Style x:Key="BadgePillCoral" TargetType="Border" BasedOn="{StaticResource BadgePill}">
+        <Setter Property="Background"  Value="{StaticResource PrimaryWashed}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Primary}" />
+    </Style>
+
+    <Style x:Key="BadgeText" TargetType="TextBlock">
+        <Setter Property="FontSize"   Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource Ink}" />
+    </Style>
+
+    <Style x:Key="BadgeTextCoral" TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
+        <Setter Property="Foreground" Value="{StaticResource PrimaryActive}" />
+    </Style>
+
+    <Style x:Key="BadgeTextMuted" TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
+        <Setter Property="Foreground" Value="{StaticResource Muted}" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <!-- Italic muted style for placeholder text in the repo list -->
+    <Style x:Key="PlaceholderName" TargetType="TextBlock">
+        <Setter Property="FontSize"   Value="15" />
+        <Setter Property="FontStyle"  Value="Italic" />
+        <Setter Property="Foreground" Value="{StaticResource Muted}" />
     </Style>
 
 </ResourceDictionary>

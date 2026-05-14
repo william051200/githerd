@@ -204,6 +204,7 @@ $ctl.BtnAdd.Add_Click({
     $ctl.RepoList.SelectedItem = $vm
     $ctl.RepoList.ScrollIntoView($vm)
     $ctl.TxtName.Focus() | Out-Null
+    $ctl.TxtName.SelectAll()
 })
 
 $ctl.BtnRemove.Add_Click({

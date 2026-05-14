@@ -67,15 +67,103 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel>
-                                    <TextBlock Text="{Binding name}"
-                                               FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource Ink}"
-                                               TextTrimming="CharacterEllipsis" />
+                                    <Grid>
+                                        <TextBlock Text="{Binding name}"
+                                                   FontSize="15" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Ink}"
+                                                   TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding name}" Value="">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Text="Untitled repository"
+                                                   Style="{DynamicResource PlaceholderName}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Visibility="Collapsed">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="FontSize"   Value="15" />
+                                                    <Setter Property="FontStyle"  Value="Italic" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource Muted}" />
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding name}" Value="">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+
                                     <TextBlock Text="{Binding path}"
                                                FontSize="12"
                                                Foreground="{DynamicResource Muted}"
                                                TextTrimming="CharacterEllipsis"
-                                               Margin="0,2,0,0" />
+                                               Margin="0,3,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding path}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
+                                        <Border Style="{DynamicResource BadgePill}">
+                                            <TextBlock Style="{DynamicResource BadgeTextMuted}">
+                                                <Run Text="branch:&#160;" />
+                                                <Run Text="{Binding master}" FontWeight="SemiBold"
+                                                     Foreground="{DynamicResource Ink}" />
+                                            </TextBlock>
+                                        </Border>
+
+                                        <!-- auto-merge badge: coral when on, muted when off -->
+                                        <Border>
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background"      Value="{DynamicResource SurfaceCard}" />
+                                                    <Setter Property="BorderBrush"     Value="{DynamicResource Hairline}" />
+                                                    <Setter Property="BorderThickness" Value="1" />
+                                                    <Setter Property="CornerRadius"    Value="999" />
+                                                    <Setter Property="Padding"         Value="10,3" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding auto_merge}" Value="True">
+                                                            <Setter Property="Background"  Value="{DynamicResource PrimaryWashed}" />
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource Primary}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="FontSize"   Value="11" />
+                                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource Muted}" />
+                                                        <Setter Property="Text"       Value="pull only" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding auto_merge}" Value="True">
+                                                                <Setter Property="Text"       Value="↺ auto-merge" />
+                                                                <Setter Property="Foreground" Value="{DynamicResource PrimaryActive}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -101,8 +189,9 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Text="SELECTED REPOSITORY" Style="{DynamicResource SectionLabel}" />
@@ -155,33 +244,30 @@
             </Border>
         </Grid>
 
-        <!-- ===== Final command card ===== -->
-        <Border Grid.Row="3" Style="{DynamicResource Card}" Margin="0,20,0,0">
+        <!-- ===== Final command card (slim) ===== -->
+        <Border Grid.Row="3" Style="{DynamicResource Card}" Margin="0,16,0,0" Padding="16,14">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,8">
+                <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,6">
                     <TextBlock DockPanel.Dock="Left" Text="POST-SYNC COMMAND"
-                               Style="{DynamicResource SectionLabel}" Margin="0" />
+                               Style="{DynamicResource SectionLabel}" Margin="0"
+                               VerticalAlignment="Center" />
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <TextBlock Text="Worker timeout (s)" Style="{DynamicResource Hint}"
                                    VerticalAlignment="Center" Margin="0,0,8,0" />
                         <TextBox x:Name="TxtTimeout" Style="{DynamicResource TextBoxStyle}"
-                                 Width="80" MinHeight="32" Padding="10,6"
+                                 Width="64" MinHeight="30" Padding="8,4"
                                  HorizontalContentAlignment="Right" />
                     </StackPanel>
                 </DockPanel>
 
                 <TextBox x:Name="TxtFinal" Grid.Row="1"
                          Style="{DynamicResource TextAreaStyle}"
-                         Height="96" />
-
-                <TextBlock Grid.Row="2" Style="{DynamicResource Hint}" Margin="0,6,0,0"
-                           Text="Runs once after every repo finishes. Leave blank to skip. No double-quotes — see docs/configuration.md." />
+                         MinHeight="56" MaxHeight="120" />
             </Grid>
         </Border>
 
