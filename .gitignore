@@ -1,0 +1,5 @@
+# User's real configuration -- never commit. Use config.example.json as a template.
+config.json
+
+# Loader temp files (in case they ever land next to the script)
+githerd_loader_*.cmd

@@ -1,0 +1,18 @@
+{
+    "repos": [
+        {
+            "name": "my-repo-a",
+            "path": ".\\my-repo-a",
+            "master": "main",
+            "auto_merge": true
+        },
+        {
+            "name": "my-repo-b",
+            "path": "C:\\code\\my-repo-b",
+            "master": "main",
+            "auto_merge": false
+        }
+    ],
+    "final_command": "",
+    "max_wait_seconds": 600
+}
