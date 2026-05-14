@@ -119,30 +119,38 @@ $window.Resources.MergedDictionaries.Add($theme)
 # ---- Resolve named controls -------------------------------------------------
 $ctl = @{}
 foreach ($n in 'ErrorBox','ErrorText','RepoList','RepoCount','BtnAdd','BtnRemove',
+                'BtnImport','BtnExport',
                 'DetailPanel','EmptyState','TxtName','TxtPath','BtnBrowse','TxtMaster',
                 'ChkAutoMerge','TxtFinal','TxtTimeout','BtnCancel','BtnSave','BtnSaveRun') {
     $ctl[$n] = $window.FindName($n)
 }
 
 # ---- Bindings & state -------------------------------------------------------
-$config = Load-Config -Path $ConfigPath
-
 $reposVm = New-Object System.Collections.ObjectModel.ObservableCollection[object]
-foreach ($r in @($config.repos)) {
-    if ($null -eq $r) { continue }
-    $reposVm.Add((New-RepoVM -Source $r))
-}
 $ctl.RepoList.ItemsSource = $reposVm
-
-$ctl.TxtFinal.Text   = [string]$config.final_command
-$timeoutInit = 600
-try { $timeoutInit = [int]$config.max_wait_seconds } catch {}
-if ($timeoutInit -lt 10)    { $timeoutInit = 10 }
-if ($timeoutInit -gt 86400) { $timeoutInit = 86400 }
-$ctl.TxtTimeout.Text = [string]$timeoutInit
 
 $script:current = $null   # currently bound repo VM
 $script:suppressDetailWrite = $false
+
+function Set-StateFromConfig {
+    param($Config)
+    $script:suppressDetailWrite = $true
+    $reposVm.Clear()
+    foreach ($r in @($Config.repos)) {
+        if ($null -eq $r) { continue }
+        $reposVm.Add((New-RepoVM -Source $r))
+    }
+    $ctl.TxtFinal.Text = [string]$Config.final_command
+    $timeoutInit = 600
+    try { if ($null -ne $Config.max_wait_seconds) { $timeoutInit = [int]$Config.max_wait_seconds } } catch {}
+    if ($timeoutInit -lt 10)    { $timeoutInit = 10 }
+    if ($timeoutInit -gt 86400) { $timeoutInit = 86400 }
+    $ctl.TxtTimeout.Text = [string]$timeoutInit
+    $script:suppressDetailWrite = $false
+}
+
+$config = Load-Config -Path $ConfigPath
+Set-StateFromConfig -Config $config
 
 function Update-Count {
     $ctl.RepoCount.Text = "$($reposVm.Count) configured"
@@ -154,9 +162,22 @@ function Show-Error {
         $ctl.ErrorBox.Visibility = 'Collapsed'
         $ctl.ErrorText.Text = ''
     } else {
+        $ctl.ErrorText.Foreground = $window.FindResource('Danger')
         $ctl.ErrorText.Text = $Message
         $ctl.ErrorBox.Visibility = 'Visible'
     }
+}
+
+function Show-Info {
+    param([string]$Message)
+    if ([string]::IsNullOrEmpty($Message)) {
+        $ctl.ErrorBox.Visibility = 'Collapsed'
+        $ctl.ErrorText.Text = ''
+        return
+    }
+    $ctl.ErrorText.Foreground = $window.FindResource('Ink')
+    $ctl.ErrorText.Text = $Message
+    $ctl.ErrorBox.Visibility = 'Visible'
 }
 
 function Bind-Detail {
@@ -230,6 +251,97 @@ $ctl.BtnBrowse.Add_Click({
     }
     if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         $ctl.TxtPath.Text = $dlg.SelectedPath
+    }
+})
+
+# ---- Import / Export -------------------------------------------------------
+
+function Get-DefaultShareDir {
+    try {
+        $docs = [Environment]::GetFolderPath('MyDocuments')
+        if ($docs -and (Test-Path -LiteralPath $docs)) { return $docs }
+    } catch {}
+    return [Environment]::GetFolderPath('UserProfile')
+}
+
+$ctl.BtnExport.Add_Click({
+    try {
+        Push-Detail-To-Vm
+        $cfg = Validate-And-Build
+    } catch {
+        Show-Error $_.Exception.Message
+        return
+    }
+    $dlg = New-Object Microsoft.Win32.SaveFileDialog
+    $dlg.Title       = 'Export GitHerd config'
+    $dlg.Filter      = 'JSON files (*.json)|*.json|All files (*.*)|*.*'
+    $dlg.FileName    = 'githerd-config.json'
+    $dlg.DefaultExt  = '.json'
+    $dlg.InitialDirectory = (Get-DefaultShareDir)
+    $dlg.OverwritePrompt  = $true
+    if ($dlg.ShowDialog($window) -ne $true) { return }
+    try {
+        Save-Config -Path $dlg.FileName -Config $cfg
+        Show-Info ("Exported to {0}" -f $dlg.FileName)
+    } catch {
+        Show-Error ("Export failed: " + $_.Exception.Message)
+    }
+})
+
+$ctl.BtnImport.Add_Click({
+    $dlg = New-Object Microsoft.Win32.OpenFileDialog
+    $dlg.Title       = 'Import GitHerd config'
+    $dlg.Filter      = 'JSON files (*.json)|*.json|All files (*.*)|*.*'
+    $dlg.InitialDirectory = (Get-DefaultShareDir)
+    $dlg.CheckFileExists = $true
+    if ($dlg.ShowDialog($window) -ne $true) { return }
+
+    $imported = $null
+    try {
+        $raw = Get-Content -LiteralPath $dlg.FileName -Raw -ErrorAction Stop
+        if ([string]::IsNullOrWhiteSpace($raw)) { throw 'File is empty.' }
+        $imported = $raw | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+        Show-Error ("Import failed: " + $_.Exception.Message)
+        return
+    }
+    if ($null -eq $imported -or
+        $imported.PSObject.Properties.Match('repos').Count -eq 0) {
+        Show-Error "Selected file is not a GitHerd config (missing 'repos' array)."
+        return
+    }
+
+    if ($reposVm.Count -gt 0) {
+        $resp = [System.Windows.MessageBox]::Show(
+            ("Replace your current config with the contents of`n{0}?" -f $dlg.FileName),
+            'Import config', 'YesNo', 'Question')
+        if ($resp -ne [System.Windows.MessageBoxResult]::Yes) { return }
+    }
+
+    Set-StateFromConfig -Config $imported
+    Update-Count
+    if ($reposVm.Count -gt 0) {
+        $ctl.RepoList.SelectedIndex = 0
+    } else {
+        Bind-Detail -Vm $null
+    }
+
+    # Non-blocking warning for paths that don't exist on this machine.
+    $missing = @()
+    foreach ($vm in $reposVm) {
+        $p = ([string]$vm.path).Trim()
+        if ($p -and -not (Test-Path -LiteralPath $p)) {
+            $label = ([string]$vm.name).Trim()
+            if (-not $label) { $label = $p }
+            $missing += $label
+        }
+    }
+    if ($missing.Count -gt 0) {
+        $list = ($missing | Select-Object -First 5) -join ', '
+        if ($missing.Count -gt 5) { $list += (", +{0} more" -f ($missing.Count - 5)) }
+        Show-Info ("Imported. {0} repo path(s) don't exist on this machine - update them before saving: {1}" -f $missing.Count, $list)
+    } else {
+        Show-Info ("Imported from {0}" -f $dlg.FileName)
     }
 })
 

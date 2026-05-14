@@ -67,6 +67,15 @@ The GUI's **Save & Run** button does both in one click.
 
 Full schema, restrictions, and the relative-path rules: see [`docs/configuration.md`](docs/configuration.md).
 
+### Sharing your config
+
+In the config window, use **↑ Import** / **↓ Export** (top of the
+*Repositories* card) to swap a `githerd-config.json` file with teammates.
+Export writes the full config (repos + post-sync command + timeout); Import
+replaces the current state in memory — click **Save** to commit. Repo
+paths are machine-specific, so after importing GitHerd flags any paths
+that don't exist locally so you can update them before saving.
+
 ---
 
 ## More docs

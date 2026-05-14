@@ -69,6 +69,16 @@ The previous WinForms UI used a `DataGridView`. That control's cell-editor needs
 
 The input box (`TxtFinal`) is therefore a single-line `TextBox` with `AcceptsReturn="False"` and `TextWrapping="Wrap"` — long commands wrap visually so you can read them, but pressing Enter is a no-op. The field uses the monospace font so command syntax stays legible.
 
+## Sharing your config (Import / Export)
+
+The header of the *Repositories* card has **↑ Import** and **↓ Export** buttons (`BtnImport`, `BtnExport`) that round-trip the full config — `repos[]`, `final_command`, `max_wait_seconds` — through a plain `.json` file. The on-disk shape is identical to `config.json`, so any exported file is also a valid drop-in replacement for it.
+
+- **Export** runs `Validate-And-Build` first, so an exported file is guaranteed to be a valid config (the same checks `Save` runs). Default filename: `githerd-config.json`, default folder: the user's Documents.
+- **Import** parses the JSON, sanity-checks that a `repos` array exists, and confirms before replacing a non-empty list. Loaded data goes through the shared `Set-StateFromConfig` helper that also handles initial load, so defaults / clamping (timeout 10–86400) are applied identically.
+- Imported state is **not auto-saved** — it sits in the editor so the user can fix machine-specific paths first. After import, GitHerd does a `Test-Path` on every repo path and surfaces missing ones in the banner (truncated at five names + "+N more"). Successful import with no missing paths shows `Imported from <file>`.
+
+The banner doubles as an info channel: `Show-Info` reuses `ErrorBox` but swaps `ErrorText.Foreground` from `Danger` to `Ink` so success messages don't read as errors.
+
 ## Exit-code contract (unchanged)
 
 | Code | Meaning |
