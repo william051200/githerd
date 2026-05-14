@@ -30,6 +30,16 @@ The GUI's **Save & Run** button does both in one click.
 
 > Other install modes (portable, custom location, specific version) and uninstall steps are in [`docs/install.md`](docs/install.md).
 
+### Updating
+
+```bat
+githerd --update          :: install the latest release in place
+githerd --update -Check   :: just check, don't install
+githerd --version         :: print the installed version
+```
+
+GitHerd also pings GitHub at most **once per day after 12:00 PM Malaysia time** and prints a one-line hint at the top of `githerd` when a newer version is out. Set `GITHERD_NO_UPDATE_CHECK=1` to disable the daily ping. Your `config.json` is preserved across updates (and a timestamped backup is written under `%LOCALAPPDATA%\GitHerd\config-backups\` just in case).
+
 ---
 
 ## Requirements

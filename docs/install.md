@@ -58,6 +58,43 @@ You can then add `%LOCALAPPDATA%\Programs\GitHerd` to your PATH manually wheneve
 
 The installer is **idempotent** — re-running it overwrites the install folder with the latest release. The PATH entry is added at most once. Your `config.json` (if you placed it next to `githerd.cmd`) is **preserved** across upgrades.
 
+### `githerd --update`
+
+The shipped `githerd --update` command is the easy way to upgrade — it
+calls the installer for you against your current install directory:
+
+```bat
+githerd --update           :: download + install the latest release
+githerd --update -Check    :: just print whether an update is available
+githerd --update -Force    :: re-install even if you're on the latest tag
+githerd --update -Quiet    :: suppress informational output
+githerd --version          :: print the installed version and exit
+```
+
+Before extracting the new release, the updater copies `config.json` into
+`%LOCALAPPDATA%\GitHerd\config-backups\config-<yyyyMMdd-HHmmss>.json` as
+a safety net. PATH is left alone (Portable-mode re-install).
+
+### Daily update hint
+
+Every time you run `githerd` (a real sync), it does a tiny background
+check at most **once per day after 12:00 PM Malaysia time (UTC+8)** and
+prints a one-line hint when a newer version is available:
+
+```
+[update] v0.3.0 is available. Run `githerd --update` to install.
+```
+
+- **Cache file:** `%LOCALAPPDATA%\GitHerd\update-check.json`
+  (`{ last_checked_unix, last_checked_utc, latest_tag }`).
+- **Throttle:** between midnight and 12:00 MYT, the network call is
+  skipped entirely (cached hint still prints if relevant). After 12:00
+  MYT, the call happens once and is cached for the rest of the day.
+- **Disable:** set the environment variable `GITHERD_NO_UPDATE_CHECK=1`
+  (user, not session — `setx GITHERD_NO_UPDATE_CHECK 1`).
+- **Offline / GitHub down:** failures are swallowed silently. The check
+  never blocks your sync.
+
 ## Uninstall
 
 There's no registry entry; just remove the folder and the PATH line.

@@ -25,6 +25,10 @@ REM     sync.bat                 Run the sync (default).
 REM     sync.bat --config        Open the configuration UI.
 REM     sync.bat -c              Same as --config.
 REM     sync.bat /c              Same as --config.
+REM     sync.bat --update        Update GitHerd to the latest release.
+REM     sync.bat -u              Same as --update.
+REM     sync.bat --version       Print the installed version and exit.
+REM     sync.bat -v              Same as --version.
 REM
 REM   Configuration is stored in config.json (next to this script).
 REM ============================================================
@@ -34,6 +38,42 @@ set "SCRIPT_DIR=%~dp0"
 set "CONFIG_PATH=%SCRIPT_DIR%config.json"
 set "UI_SCRIPT=%SCRIPT_DIR%ui\config-ui.ps1"
 set "LOADER_PS=%SCRIPT_DIR%lib\load-config.ps1"
+set "UPDATE_PS=%SCRIPT_DIR%lib\update.ps1"
+set "UPDATE_CHECK_PS=%SCRIPT_DIR%lib\update-check.ps1"
+set "VERSION_FILE=%SCRIPT_DIR%VERSION"
+
+REM ===== Version dispatch ===================================================
+if /I "%~1"=="--version" goto :print_version
+if /I "%~1"=="-v"        goto :print_version
+goto :after_version_dispatch
+
+:print_version
+if exist "%VERSION_FILE%" (
+    set /p GH_VER=<"%VERSION_FILE%"
+    echo githerd v!GH_VER!
+) else (
+    echo githerd ^(version unknown^)
+)
+endlocal & exit /b 0
+
+:after_version_dispatch
+
+REM ===== Update dispatch ====================================================
+if /I "%~1"=="--update" goto :launch_update
+if /I "%~1"=="-u"       goto :launch_update
+goto :after_update_dispatch
+
+:launch_update
+where powershell >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] PowerShell is required to run the updater.
+    endlocal & exit /b 1
+)
+shift
+powershell -NoProfile -ExecutionPolicy Bypass -File "%UPDATE_PS%" %1 %2 %3 %4 %5 %6 %7 %8 %9
+endlocal & exit /b %ERRORLEVEL%
+
+:after_update_dispatch
 
 REM ===== UI dispatch (must run BEFORE config load so we can use UI to fix a bad config) ===
 if /I "%~1"=="--config" goto :launch_ui
@@ -56,6 +96,12 @@ if "%UI_RC%"=="10" (
 endlocal & exit /b %UI_RC%
 
 :after_ui_dispatch
+
+REM ===== Daily update check (silent, throttled) =============================
+where powershell >nul 2>&1
+if not errorlevel 1 (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%UPDATE_CHECK_PS%"
+)
 
 REM ===== Load config from JSON =====================================
 where powershell >nul 2>&1

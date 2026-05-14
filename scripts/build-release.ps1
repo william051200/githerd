@@ -37,6 +37,7 @@ $Include = @(
     'githerd.cmd',
     'README.md',
     'LICENSE',
+    'VERSION',
     'config.example.json',
     'lib',
     'ui',
@@ -64,6 +65,10 @@ try {
             Copy-Item $src $dst
         }
     }
+
+    # Stamp the VERSION file with the build version (overrides whatever was
+    # checked in, so the running install always knows its own version).
+    Set-Content -LiteralPath (Join-Path $Pkg 'VERSION') -Value $Version -Encoding ascii -NoNewline
 
     $ZipPath = Join-Path $OutDir "githerd-v$Version.zip"
     if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
