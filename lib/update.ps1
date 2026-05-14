@@ -27,9 +27,9 @@
 #>
 [CmdletBinding()]
 param(
-    [switch]$Check,
-    [switch]$Force,
-    [switch]$Quiet,
+    [Alias('c')][switch]$Check,
+    [Alias('f')][switch]$Force,
+    [Alias('q')][switch]$Quiet,
     [string]$DevZip,
     [string]$InstallScriptUrl = 'https://raw.githubusercontent.com/william051200/githerd/main/install.ps1'
 )

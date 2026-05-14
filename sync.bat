@@ -42,9 +42,79 @@ set "UPDATE_PS=%SCRIPT_DIR%lib\update.ps1"
 set "UPDATE_CHECK_PS=%SCRIPT_DIR%lib\update-check.ps1"
 set "VERSION_FILE=%SCRIPT_DIR%VERSION"
 
+REM ===== Help dispatch =====================================================
+if /I "%~1"=="--help" goto :print_help
+if /I "%~1"=="-h"     goto :print_help
+if /I "%~1"=="/?"     goto :print_help
+goto :after_help_dispatch
+
+:print_help
+set "GH_VER=unknown"
+if exist "%VERSION_FILE%" set /p GH_VER=<"%VERSION_FILE%"
+echo githerd v!GH_VER! - parallel multi-repo git sync
+echo.
+echo Usage:
+echo   githerd                          Sync all configured repos in parallel.
+echo   githerd --config, -c, /c         Open the configuration UI.
+echo   githerd --update, -u             Install the latest GitHerd release.
+echo   githerd --version, -v            Print the installed version.
+echo   githerd --help, -h, /?           Show this help.
+echo.
+echo Run "githerd [command] -h" for command-specific help.
+echo.
+echo More: https://github.com/william051200/githerd
+endlocal & exit /b 0
+
+:help_config
+echo githerd --config  ^(aliases: -c, /c^)
+echo.
+echo Open the configuration UI to add/remove repos, set the post-sync
+echo command, and adjust the per-repo timeout. Saved settings are written
+echo to config.json next to githerd. If you click "Save & Run", the sync
+echo starts immediately after closing the UI.
+endlocal & exit /b 0
+
+:help_update
+echo githerd --update  ^(alias: -u^)
+echo.
+echo Download and install the latest GitHerd release from GitHub. Your
+echo config.json is preserved; a timestamped backup is written to
+echo %%LOCALAPPDATA%%\GitHerd\config-backups\.
+echo.
+echo Flags:
+echo   -Check, -c    Print whether an update is available; do not install.
+echo   -Force, -f    Re-install even if already on the latest version.
+echo   -Quiet, -q    Suppress informational output.
+echo.
+echo Examples:
+echo   githerd --update
+echo   githerd --update -Check
+echo   githerd --update -c
+echo   githerd --update -Force
+endlocal & exit /b 0
+
+:help_version
+echo githerd --version  ^(alias: -v^)
+echo.
+echo Print the installed GitHerd version ^(read from the VERSION file next
+echo to githerd^) and exit.
+endlocal & exit /b 0
+
+:after_help_dispatch
+
 REM ===== Version dispatch ===================================================
-if /I "%~1"=="--version" goto :print_version
-if /I "%~1"=="-v"        goto :print_version
+if /I "%~1"=="--version" (
+    if /I "%~2"=="-h"     goto :help_version
+    if /I "%~2"=="--help" goto :help_version
+    if /I "%~2"=="/?"     goto :help_version
+    goto :print_version
+)
+if /I "%~1"=="-v" (
+    if /I "%~2"=="-h"     goto :help_version
+    if /I "%~2"=="--help" goto :help_version
+    if /I "%~2"=="/?"     goto :help_version
+    goto :print_version
+)
 goto :after_version_dispatch
 
 :print_version
@@ -59,8 +129,18 @@ endlocal & exit /b 0
 :after_version_dispatch
 
 REM ===== Update dispatch ====================================================
-if /I "%~1"=="--update" goto :launch_update
-if /I "%~1"=="-u"       goto :launch_update
+if /I "%~1"=="--update" (
+    if /I "%~2"=="-h"     goto :help_update
+    if /I "%~2"=="--help" goto :help_update
+    if /I "%~2"=="/?"     goto :help_update
+    goto :launch_update
+)
+if /I "%~1"=="-u" (
+    if /I "%~2"=="-h"     goto :help_update
+    if /I "%~2"=="--help" goto :help_update
+    if /I "%~2"=="/?"     goto :help_update
+    goto :launch_update
+)
 goto :after_update_dispatch
 
 :launch_update
@@ -76,9 +156,24 @@ endlocal & exit /b %ERRORLEVEL%
 :after_update_dispatch
 
 REM ===== UI dispatch (must run BEFORE config load so we can use UI to fix a bad config) ===
-if /I "%~1"=="--config" goto :launch_ui
-if /I "%~1"=="-c"       goto :launch_ui
-if /I "%~1"=="/c"       goto :launch_ui
+if /I "%~1"=="--config" (
+    if /I "%~2"=="-h"     goto :help_config
+    if /I "%~2"=="--help" goto :help_config
+    if /I "%~2"=="/?"     goto :help_config
+    goto :launch_ui
+)
+if /I "%~1"=="-c" (
+    if /I "%~2"=="-h"     goto :help_config
+    if /I "%~2"=="--help" goto :help_config
+    if /I "%~2"=="/?"     goto :help_config
+    goto :launch_ui
+)
+if /I "%~1"=="/c" (
+    if /I "%~2"=="-h"     goto :help_config
+    if /I "%~2"=="--help" goto :help_config
+    if /I "%~2"=="/?"     goto :help_config
+    goto :launch_ui
+)
 goto :after_ui_dispatch
 
 :launch_ui
