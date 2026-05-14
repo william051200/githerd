@@ -35,6 +35,10 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="GitHerd" Style="{DynamicResource DisplayTitle}" />
+                <TextBlock x:Name="LblVersion"
+                           Style="{DynamicResource Subhead}"
+                           VerticalAlignment="Bottom"
+                           Margin="8,0,0,8" />
                 <TextBlock Text="·" Style="{DynamicResource Subhead}"
                            FontSize="20" Margin="14,0,14,0" VerticalAlignment="Center" />
                 <TextBlock Text="Configure repositories and the post-sync command."
@@ -232,7 +236,7 @@
                                      Content="Browse…" Margin="6,0,0,0" />
                         </Grid>
                         <TextBlock Grid.Row="5" Style="{DynamicResource Hint}" Margin="0,4,0,0"
-                                   Text="Absolute or relative to where you run sync.bat." />
+                                   Text="Absolute path to the local repository folder." />
 
                         <TextBlock Grid.Row="6" Text="Master branch" Style="{DynamicResource FieldLabel}" Margin="0,12,0,4" />
                         <TextBox  x:Name="TxtMaster" Grid.Row="7" Style="{DynamicResource TextBoxStyle}"
@@ -302,10 +306,6 @@
 
         <!-- ===== Footer ===== -->
         <DockPanel Grid.Row="3" LastChildFill="False" Margin="0,16,0,0">
-            <TextBlock DockPanel.Dock="Left"
-                       Text="Save writes config.json next to sync.bat."
-                       Style="{DynamicResource Hint}"
-                       VerticalAlignment="Center" />
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button x:Name="BtnCancel"  Style="{DynamicResource SecondaryButton}" Content="Cancel" />
                 <Button x:Name="BtnSave"    Style="{DynamicResource SecondaryButton}" Content="Save"     Margin="10,0,0,0" />

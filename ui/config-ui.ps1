@@ -119,10 +119,21 @@ $window.Resources.MergedDictionaries.Add($theme)
 # ---- Resolve named controls -------------------------------------------------
 $ctl = @{}
 foreach ($n in 'ErrorBox','ErrorText','RepoList','RepoCount','BtnAdd','BtnRemove',
-                'BtnImport','BtnExport',
+                'BtnImport','BtnExport','LblVersion',
                 'DetailPanel','EmptyState','TxtName','TxtPath','BtnBrowse','TxtMaster',
                 'ChkAutoMerge','TxtFinal','TxtTimeout','BtnCancel','BtnSave','BtnSaveRun') {
     $ctl[$n] = $window.FindName($n)
+}
+
+# ---- Version badge ----------------------------------------------------------
+$versionFile = Join-Path $PSScriptRoot '..\VERSION'
+$ghVersion   = ''
+if (Test-Path -LiteralPath $versionFile) {
+    try { $ghVersion = (Get-Content -LiteralPath $versionFile -Raw).Trim() } catch { }
+}
+if ($ghVersion) {
+    $ctl.LblVersion.Text = "v$ghVersion"
+    $window.Title        = "GitHerd v$ghVersion - Configuration"
 }
 
 # ---- Bindings & state -------------------------------------------------------
@@ -283,8 +294,12 @@ $ctl.BtnExport.Add_Click({
     $dlg.OverwritePrompt  = $true
     if ($dlg.ShowDialog($window) -ne $true) { return }
     try {
-        Save-Config -Path $dlg.FileName -Config $cfg
-        Show-Info ("Exported to {0}" -f $dlg.FileName)
+        $exportCfg = $cfg | ConvertTo-Json -Depth 6 | ConvertFrom-Json
+        if ($exportCfg.repos) {
+            foreach ($r in $exportCfg.repos) { $r.path = '' }
+        }
+        Save-Config -Path $dlg.FileName -Config $exportCfg
+        Show-Info ("Exported to {0}. Repo paths were not included - recipients will set their own." -f $dlg.FileName)
     } catch {
         Show-Error ("Export failed: " + $_.Exception.Message)
     }
@@ -328,20 +343,31 @@ $ctl.BtnImport.Add_Click({
         Bind-Detail -Vm $null
     }
 
-    # Non-blocking warning for paths that don't exist on this machine.
+    # Non-blocking warning: blank paths (from a portable share) and
+    # paths that don't exist on this machine are both shown distinctly.
+    $blank   = 0
     $missing = @()
     foreach ($vm in $reposVm) {
         $p = ([string]$vm.path).Trim()
-        if ($p -and -not (Test-Path -LiteralPath $p)) {
-            $label = ([string]$vm.name).Trim()
-            if (-not $label) { $label = $p }
+        $label = ([string]$vm.name).Trim()
+        if (-not $label) { $label = '(unnamed)' }
+        if (-not $p) {
+            $blank++
+        } elseif (-not (Test-Path -LiteralPath $p)) {
             $missing += $label
         }
+    }
+    $parts = @()
+    if ($blank -gt 0) {
+        $parts += "{0} repo(s) need a path - click Browse to set them" -f $blank
     }
     if ($missing.Count -gt 0) {
         $list = ($missing | Select-Object -First 5) -join ', '
         if ($missing.Count -gt 5) { $list += (", +{0} more" -f ($missing.Count - 5)) }
-        Show-Info ("Imported. {0} repo path(s) don't exist on this machine - update them before saving: {1}" -f $missing.Count, $list)
+        $parts += "{0} path(s) don't exist on this machine: {1}" -f $missing.Count, $list
+    }
+    if ($parts.Count -gt 0) {
+        Show-Info ("Imported. " + ($parts -join ' | ') + ". Update before saving.")
     } else {
         Show-Info ("Imported from {0}" -f $dlg.FileName)
     }
