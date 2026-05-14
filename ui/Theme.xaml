@@ -82,6 +82,7 @@
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{StaticResource Ink}" />
         <Setter Property="Margin"     Value="0,0,0,4" />
+        <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
     <Style x:Key="Hint" TargetType="TextBlock">
@@ -251,20 +252,25 @@
     <!-- ===== CheckBox ===== -->
     <Style x:Key="CheckBoxStyle" TargetType="CheckBox">
         <Setter Property="Foreground" Value="{StaticResource Ink}" />
-        <Setter Property="FontSize"   Value="14" />
+        <Setter Property="FontSize"   Value="13" />
         <Setter Property="Cursor"     Value="Hand" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
-                    <StackPanel Orientation="Horizontal">
-                        <Border x:Name="Box"
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="Box" Grid.Column="0"
                                 Width="18" Height="18"
                                 CornerRadius="4"
                                 Background="{StaticResource Canvas}"
                                 BorderBrush="{StaticResource HairlineStrong}"
                                 BorderThickness="1.5"
-                                VerticalAlignment="Center">
+                                VerticalAlignment="Top"
+                                Margin="0,1,0,0">
                             <Path x:Name="Check"
                                   Data="M 3 9 L 7 13 L 15 5"
                                   Stroke="{StaticResource OnPrimary}"
@@ -273,8 +279,18 @@
                                   StrokeEndLineCap="Round"
                                   Visibility="Collapsed" />
                         </Border>
-                        <ContentPresenter Margin="9,0,0,0" VerticalAlignment="Center" />
-                    </StackPanel>
+                        <ContentPresenter Grid.Column="1"
+                                          Margin="9,0,0,0"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True">
+                            <ContentPresenter.Resources>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap" />
+                                    <Setter Property="LineHeight"   Value="17" />
+                                </Style>
+                            </ContentPresenter.Resources>
+                        </ContentPresenter>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Box"   Property="Background"  Value="{StaticResource Primary}" />

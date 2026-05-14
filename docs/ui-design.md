@@ -1,4 +1,4 @@
-# UI design
+﻿# UI design
 
 The configuration UI (`sync.bat --config`) is built with **WPF + XAML**, hosted by PowerShell. The visual language follows [`DESIGN.md`](../DESIGN.md), which is an Anthropic / Claude.com–inspired styleguide.
 
@@ -62,6 +62,12 @@ The previous WinForms UI used a `DataGridView`. That control's cell-editor needs
   so the list label updates as you type.
 
 `+ Add repository` adds a new entry that shows *Untitled repository* in italic muted text until you give it a name; this avoids the "phantom blank row" feeling and the validator skips fully-empty entries on Save automatically. `Remove` drops the selected repo. Validation surfaces in a coral-tinted banner at the top of the window — never a `MessageBox` popup.
+
+## Post-sync command field
+
+`final_command` is **single line** by design: `lib/load-config.ps1` writes it as a `set "FINAL_COMMAND=…"` line in the generated batch script, and an embedded newline would break the `set` statement.
+
+The input box (`TxtFinal`) is therefore a single-line `TextBox` with `AcceptsReturn="False"` and `TextWrapping="Wrap"` — long commands wrap visually so you can read them, but pressing Enter is a no-op. The field uses the monospace font so command syntax stays legible.
 
 ## Exit-code contract (unchanged)
 

@@ -253,6 +253,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,6">
@@ -269,8 +270,18 @@
                         </DockPanel>
 
                         <TextBox x:Name="TxtFinal" Grid.Row="1"
-                                 Style="{DynamicResource TextAreaStyle}"
-                                 MinHeight="48" MaxHeight="100" />
+                                 Style="{DynamicResource TextBoxStyle}"
+                                 AcceptsReturn="False"
+                                 TextWrapping="Wrap"
+                                 MinLines="2" MaxLines="3"
+                                 FontFamily="{DynamicResource FontMono}"
+                                 FontSize="12"
+                                 VerticalContentAlignment="Top"
+                                 Padding="10,8"
+                                 VerticalScrollBarVisibility="Auto" />
+
+                        <TextBlock Grid.Row="2" Style="{DynamicResource Hint}" Margin="0,4,0,0"
+                                   Text="Single line — wraps for readability. Runs once after every repo finishes." />
                     </Grid>
                 </Border>
             </Grid>
