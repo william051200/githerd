@@ -2,6 +2,11 @@
 
 The configuration UI (`sync.bat --config`) is built with **WPF + XAML**, hosted by PowerShell. The visual language follows [`DESIGN.md`](../DESIGN.md), which is an Anthropic / Claude.com–inspired styleguide.
 
+## Branding casing
+
+- **Display brand:** `GitHerd` (capital H). Used in the window title, the inline header wordmark, and prose.
+- **Filename / CLI brand:** `githerd` (all lowercase). Used for the repository name, folder, and any path-like reference.
+
 ## Files
 
 | File | Role |
@@ -29,7 +34,7 @@ The configuration UI (`sync.bat --config`) is built with **WPF + XAML**, hosted 
 | `button-primary` | `PrimaryButton` | Coral fill, white text, darkens on hover/press |
 | `button-secondary` | `SecondaryButton` / `SecondaryButtonSmall` | Cream fill, hairline border, coral border on hover |
 | `feature-card` | `Card` style on `Border` | Surface-card background, hairline border, 12px radius |
-| `badge-pill` | `BadgePill` / `BadgePillCoral` | Pill border with surface-card or coral-washed fill, used for the per-repo branch + merge-mode indicators in the list |
+| `badge-pill` | `BadgePill` / `BadgePillCoral` | Squarer chip badges (5px corner radius) with surface-card or coral-washed fill, used for the per-repo branch + merge-mode indicators in the list |
 
 ## Font substitutions
 
@@ -48,7 +53,7 @@ If you have the licensed fonts installed, edit the `FontDisplay` / `FontBody` re
 The previous WinForms UI used a `DataGridView`. That control's cell-editor needs a double-click or F2 to enter edit mode, drops edits when focus shifts, and treats checkboxes awkwardly. The new UI is a **list + detail form**:
 
 * Left card — a `ListBox` of repos rendered as 3-line cards: name,
-  path, and a row of pill badges showing the master branch and an
+  path, and a row of chip badges showing the master branch and an
   `↺ auto-merge` (coral) / `pull only` (muted) indicator. So the merge
   mode is visible at a glance — no need to click into the detail
   panel to know what each repo is configured to do.

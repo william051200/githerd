@@ -1,4 +1,4 @@
-<!--
+﻿<!--
     githerd Theme.xaml
     DESIGN.md token mapping. See docs/ui-design.md for substitution notes.
 -->
@@ -96,10 +96,10 @@
         <Setter Property="Foreground"      Value="{StaticResource Ink}" />
         <Setter Property="BorderBrush"     Value="{StaticResource Hairline}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding"         Value="12,10" />
-        <Setter Property="MinHeight"       Value="40" />
+        <Setter Property="Padding"         Value="10,6" />
+        <Setter Property="MinHeight"       Value="32" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="FontSize"        Value="14" />
+        <Setter Property="FontSize"        Value="13" />
         <Setter Property="CaretBrush"      Value="{StaticResource Primary}" />
         <Setter Property="SelectionBrush"  Value="{StaticResource PrimaryWashed}" />
         <Setter Property="Template">
@@ -146,12 +146,12 @@
     <!-- Multiline variant (final command) -->
     <Style x:Key="TextAreaStyle" TargetType="TextBox" BasedOn="{StaticResource TextBoxStyle}">
         <Setter Property="FontFamily"            Value="{StaticResource FontMono}" />
-        <Setter Property="FontSize"              Value="13" />
+        <Setter Property="FontSize"              Value="12" />
         <Setter Property="AcceptsReturn"         Value="True" />
         <Setter Property="TextWrapping"          Value="Wrap" />
         <Setter Property="VerticalContentAlignment" Value="Top" />
-        <Setter Property="Padding"               Value="12,10" />
-        <Setter Property="MinHeight"             Value="96" />
+        <Setter Property="Padding"               Value="10,8" />
+        <Setter Property="MinHeight"             Value="64" />
         <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
     </Style>
 
@@ -161,10 +161,10 @@
         <Setter Property="Foreground"      Value="{StaticResource OnPrimary}" />
         <Setter Property="BorderBrush"     Value="{StaticResource Primary}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding"         Value="20,10" />
-        <Setter Property="MinHeight"       Value="40" />
-        <Setter Property="MinWidth"        Value="96" />
-        <Setter Property="FontSize"        Value="14" />
+        <Setter Property="Padding"         Value="16,7" />
+        <Setter Property="MinHeight"       Value="34" />
+        <Setter Property="MinWidth"        Value="80" />
+        <Setter Property="FontSize"        Value="13" />
         <Setter Property="FontWeight"      Value="SemiBold" />
         <Setter Property="Cursor"          Value="Hand" />
         <Setter Property="Template">
@@ -201,10 +201,10 @@
         <Setter Property="Foreground"      Value="{StaticResource Ink}" />
         <Setter Property="BorderBrush"     Value="{StaticResource HairlineStrong}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding"         Value="20,10" />
-        <Setter Property="MinHeight"       Value="40" />
-        <Setter Property="MinWidth"        Value="96" />
-        <Setter Property="FontSize"        Value="14" />
+        <Setter Property="Padding"         Value="16,7" />
+        <Setter Property="MinHeight"       Value="34" />
+        <Setter Property="MinWidth"        Value="80" />
+        <Setter Property="FontSize"        Value="13" />
         <Setter Property="FontWeight"      Value="SemiBold" />
         <Setter Property="Cursor"          Value="Hand" />
         <Setter Property="Template">
@@ -259,21 +259,21 @@
                 <ControlTemplate TargetType="CheckBox">
                     <StackPanel Orientation="Horizontal">
                         <Border x:Name="Box"
-                                Width="20" Height="20"
-                                CornerRadius="5"
+                                Width="18" Height="18"
+                                CornerRadius="4"
                                 Background="{StaticResource Canvas}"
                                 BorderBrush="{StaticResource HairlineStrong}"
                                 BorderThickness="1.5"
                                 VerticalAlignment="Center">
                             <Path x:Name="Check"
-                                  Data="M 4 10 L 8 14 L 16 6"
+                                  Data="M 3 9 L 7 13 L 15 5"
                                   Stroke="{StaticResource OnPrimary}"
                                   StrokeThickness="2"
                                   StrokeStartLineCap="Round"
                                   StrokeEndLineCap="Round"
                                   Visibility="Collapsed" />
                         </Border>
-                        <ContentPresenter Margin="10,0,0,0" VerticalAlignment="Center" />
+                        <ContentPresenter Margin="9,0,0,0" VerticalAlignment="Center" />
                     </StackPanel>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
@@ -314,7 +314,7 @@
                 <Style TargetType="ListBoxItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     <Setter Property="Padding"   Value="0" />
-                    <Setter Property="Margin"    Value="0,0,0,10" />
+                    <Setter Property="Margin"    Value="0,0,0,8" />
                     <Setter Property="Cursor"    Value="Hand" />
                     <Setter Property="Template">
                         <Setter.Value>
@@ -324,7 +324,7 @@
                                         BorderBrush="{StaticResource Hairline}"
                                         BorderThickness="1"
                                         CornerRadius="10"
-                                        Padding="16,14">
+                                        Padding="14,10">
                                     <ContentPresenter />
                                 </Border>
                                 <ControlTemplate.Triggers>
@@ -368,13 +368,13 @@
         <Setter Property="Margin"     Value="0,16" />
     </Style>
 
-    <!-- ===== Pill badges ===== -->
+    <!-- ===== Chip badges (squarer than pills) ===== -->
     <Style x:Key="BadgePill" TargetType="Border">
         <Setter Property="Background"      Value="{StaticResource SurfaceCard}" />
         <Setter Property="BorderBrush"     Value="{StaticResource Hairline}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius"    Value="999" />
-        <Setter Property="Padding"         Value="10,3" />
+        <Setter Property="CornerRadius"    Value="5" />
+        <Setter Property="Padding"         Value="8,3" />
         <Setter Property="Margin"          Value="0,0,6,0" />
     </Style>
 
