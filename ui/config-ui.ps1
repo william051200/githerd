@@ -162,7 +162,8 @@ function Show-Error {
         $ctl.ErrorBox.Visibility = 'Collapsed'
         $ctl.ErrorText.Text = ''
     } else {
-        $ctl.ErrorText.Foreground = $window.FindResource('Danger')
+        $ctl.ErrorBox.Style  = $window.FindResource('ErrorBanner')
+        $ctl.ErrorText.Style = $window.FindResource('ErrorBannerText')
         $ctl.ErrorText.Text = $Message
         $ctl.ErrorBox.Visibility = 'Visible'
     }
@@ -175,7 +176,8 @@ function Show-Info {
         $ctl.ErrorText.Text = ''
         return
     }
-    $ctl.ErrorText.Foreground = $window.FindResource('Ink')
+    $ctl.ErrorBox.Style  = $window.FindResource('SuccessBanner')
+    $ctl.ErrorText.Style = $window.FindResource('SuccessBannerText')
     $ctl.ErrorText.Text = $Message
     $ctl.ErrorBox.Visibility = 'Visible'
 }

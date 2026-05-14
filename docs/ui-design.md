@@ -71,7 +71,7 @@ The input box (`TxtFinal`) is therefore a single-line `TextBox` with `AcceptsRet
 
 ## Sharing your config (Import / Export)
 
-The header of the *Repositories* card has **↑ Import** and **↓ Export** buttons (`BtnImport`, `BtnExport`) that round-trip the full config — `repos[]`, `final_command`, `max_wait_seconds` — through a plain `.json` file. The on-disk shape is identical to `config.json`, so any exported file is also a valid drop-in replacement for it.
+The header of the window has **↑ Import** and **↓ Export** buttons (`BtnImport`, `BtnExport`) that round-trip the full config — `repos[]`, `final_command`, `max_wait_seconds` — through a plain `.json` file. They sit in the page header (not the *Repositories* card) because they act on the whole config, not just the repo list. The on-disk shape is identical to `config.json`, so any exported file is also a valid drop-in replacement for it.
 
 - **Export** runs `Validate-And-Build` first, so an exported file is guaranteed to be a valid config (the same checks `Save` runs). Default filename: `githerd-config.json`, default folder: the user's Documents.
 - **Import** parses the JSON, sanity-checks that a `repos` array exists, and confirms before replacing a non-empty list. Loaded data goes through the shared `Set-StateFromConfig` helper that also handles initial load, so defaults / clamping (timeout 10–86400) are applied identically.

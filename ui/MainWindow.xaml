@@ -20,14 +20,27 @@
         </Grid.RowDefinitions>
 
         <!-- ===== Header (inline) ===== -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16"
-                    VerticalAlignment="Center">
-            <TextBlock Text="GitHerd" Style="{DynamicResource DisplayTitle}" />
-            <TextBlock Text="·" Style="{DynamicResource Subhead}"
-                       FontSize="20" Margin="14,0,14,0" VerticalAlignment="Center" />
-            <TextBlock Text="Configure repositories and the post-sync command."
-                       Style="{DynamicResource Subhead}" VerticalAlignment="Center" />
-        </StackPanel>
+        <DockPanel Grid.Row="0" Margin="0,0,0,16" LastChildFill="True">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                        VerticalAlignment="Center">
+                <Button x:Name="BtnImport"
+                        Style="{DynamicResource SecondaryButtonSmall}"
+                        Content="↑ Import"
+                        ToolTip="Import config from a .json file" />
+                <Button x:Name="BtnExport"
+                        Style="{DynamicResource SecondaryButtonSmall}"
+                        Content="↓ Export"
+                        Margin="6,0,0,0"
+                        ToolTip="Export current config to a .json file" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="GitHerd" Style="{DynamicResource DisplayTitle}" />
+                <TextBlock Text="·" Style="{DynamicResource Subhead}"
+                           FontSize="20" Margin="14,0,14,0" VerticalAlignment="Center" />
+                <TextBlock Text="Configure repositories and the post-sync command."
+                           Style="{DynamicResource Subhead}" VerticalAlignment="Center" />
+            </StackPanel>
+        </DockPanel>
 
         <!-- ===== Error banner (hidden by default) ===== -->
         <Border x:Name="ErrorBox" Grid.Row="1"
@@ -62,18 +75,6 @@
                                    Style="{DynamicResource Subhead}"
                                    VerticalAlignment="Center"
                                    Text="0" />
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                                    VerticalAlignment="Center" Margin="0,0,12,0">
-                            <Button x:Name="BtnImport"
-                                    Style="{DynamicResource SecondaryButtonSmall}"
-                                    Content="↑ Import"
-                                    ToolTip="Import config from a .json file" />
-                            <Button x:Name="BtnExport"
-                                    Style="{DynamicResource SecondaryButtonSmall}"
-                                    Content="↓ Export"
-                                    Margin="6,0,0,0"
-                                    ToolTip="Export current config to a .json file" />
-                        </StackPanel>
                     </DockPanel>
 
                     <ListBox x:Name="RepoList" Grid.Row="1"

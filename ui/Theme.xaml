@@ -20,6 +20,8 @@
     <Color x:Key="ColorPrimaryWashed">#33CC785C</Color>
     <Color x:Key="ColorOnPrimary">#FFFFFFFF</Color>
     <Color x:Key="ColorDanger">#FFB4452F</Color>
+    <Color x:Key="ColorSuccess">#FF3F7A4F</Color>
+    <Color x:Key="ColorSuccessWashed">#223F7A4F</Color>
 
     <SolidColorBrush x:Key="Canvas"          Color="{StaticResource ColorCanvas}" />
     <SolidColorBrush x:Key="SurfaceCard"     Color="{StaticResource ColorSurfaceCard}" />
@@ -33,6 +35,8 @@
     <SolidColorBrush x:Key="PrimaryWashed"   Color="{StaticResource ColorPrimaryWashed}" />
     <SolidColorBrush x:Key="OnPrimary"       Color="{StaticResource ColorOnPrimary}" />
     <SolidColorBrush x:Key="Danger"          Color="{StaticResource ColorDanger}" />
+    <SolidColorBrush x:Key="Success"         Color="{StaticResource ColorSuccess}" />
+    <SolidColorBrush x:Key="SuccessWashed"   Color="{StaticResource ColorSuccessWashed}" />
 
     <!-- ===== Typography ===== -->
     <!-- Copernicus serif → Cambria fallback. StyreneB sans → Segoe UI. -->
@@ -372,6 +376,21 @@
     </Style>
     <Style x:Key="ErrorBannerText" TargetType="TextBlock">
         <Setter Property="Foreground"   Value="{StaticResource Danger}" />
+        <Setter Property="FontSize"     Value="13" />
+        <Setter Property="FontWeight"   Value="SemiBold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- Success / info banner -->
+    <Style x:Key="SuccessBanner" TargetType="Border">
+        <Setter Property="Background"      Value="{StaticResource SuccessWashed}" />
+        <Setter Property="BorderBrush"     Value="{StaticResource Success}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius"    Value="8" />
+        <Setter Property="Padding"         Value="14,10" />
+    </Style>
+    <Style x:Key="SuccessBannerText" TargetType="TextBlock">
+        <Setter Property="Foreground"   Value="{StaticResource Success}" />
         <Setter Property="FontSize"     Value="13" />
         <Setter Property="FontWeight"   Value="SemiBold" />
         <Setter Property="TextWrapping" Value="Wrap" />
