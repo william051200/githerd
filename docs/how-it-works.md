@@ -26,7 +26,7 @@ The whole folder is self-contained — copy or move it anywhere.
 
 ## Per-repo workflow
 
-Each repo runs in its own background `cmd` worker, in parallel. The worker does:
+Each repo runs in its own background `cmd` worker, in parallel. Before step 1 each worker resolves its effective directory: if `repos[].path` is absolute it is used as-is, otherwise it is joined onto `working_dir` (or the shell's current directory when `working_dir` is empty). The worker then does:
 
 1. **starting** — sanity-check the path exists and is a Git repo.
 2. **stashing** — if the working tree is dirty, `git stash push -u`.
@@ -42,6 +42,8 @@ Each repo runs in its own background `cmd` worker, in parallel. The worker does:
 7. **popping stash** — if step 2 stashed, `git stash pop` (skipped if step 6 failed).
 
 If any step fails, the repo's status becomes `FAILED (<reason>)` and its full log path is printed at the end. The temp folder containing logs is **kept on failure** so you can inspect it.
+
+The `final_command` is run **sequentially after all workers finish**, from `working_dir` (or the shell's current directory if `working_dir` is empty).
 
 ---
 

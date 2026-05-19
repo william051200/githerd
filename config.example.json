@@ -1,8 +1,9 @@
 {
+    "working_dir": "",
     "repos": [
         {
             "name": "my-repo-a",
-            "path": ".\\my-repo-a",
+            "path": "my-repo-a",
             "master": "main",
             "auto_merge": true
         },

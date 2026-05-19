@@ -18,6 +18,7 @@
       repos[N].auto_merge   (true|false)
       repo_count
       repo_max_index
+      WORKING_DIR
       FINAL_COMMAND
       MAX_WAIT
 #>
@@ -73,6 +74,16 @@ for ($i = 0; $i -lt $repos.Count; $i++) {
 $count = $repos.Count
 $lines.Add("set /a repo_count=$count")
 $lines.Add("set /a repo_max_index=$($count - 1)")
+
+$workingDir = ''
+if ($cfg.PSObject.Properties.Match('working_dir').Count -gt 0 -and $null -ne $cfg.working_dir) {
+    $workingDir = [string]$cfg.working_dir
+}
+if ($workingDir -match '"') {
+    Write-Error 'working_dir must not contain double-quote characters.'
+    exit 1
+}
+$lines.Add("set `"WORKING_DIR=$workingDir`"")
 
 $finalCmd = [string]$cfg.final_command
 # Escape ^, &, |, <, > for safety inside a `set "VAR=..."` payload? Inside quoted set,

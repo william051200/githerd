@@ -340,10 +340,22 @@ if defined ANY_FAILED (
 
 REM --- Run final command (sequential, after all workers done) ---
 if defined FINAL_COMMAND if not "!FINAL_COMMAND!"=="" (
-    echo [INFO] Running final command:
+    REM Resolve the directory to run the final command from: WORKING_DIR if set,
+    REM otherwise the current shell directory (backward compatible).
+    set "FINAL_ROOT=!WORKING_DIR!"
+    if "!FINAL_ROOT!"=="" set "FINAL_ROOT=%CD%"
+    set "_FINAL_PUSHED="
+    if exist "!FINAL_ROOT!\." (
+        pushd "!FINAL_ROOT!" >nul 2>&1
+        if not errorlevel 1 set "_FINAL_PUSHED=1"
+    ) else (
+        echo [WARN] working_dir not found: !FINAL_ROOT! - running final command from current directory.
+    )
+    echo [INFO] Running final command in: !CD!
     echo        !FINAL_COMMAND!
     call !FINAL_COMMAND!
     set "FINAL_RC=!ERRORLEVEL!"
+    if defined _FINAL_PUSHED popd
     if "!FINAL_RC!"=="0" (
         echo [INFO] Final command completed successfully
     ) else (
@@ -519,21 +531,25 @@ set "PATHDIR=!repos[%IDX%].path!"
 set "MASTER_BRANCH=!repos[%IDX%].master!"
 set "AUTO_MERGE=!repos[%IDX%].auto_merge!"
 
+REM Resolve effective directory by combining WORKING_DIR with the configured path.
+REM Absolute paths (X:..., \..., /...) are used as-is.
+call :resolve_path "!PATHDIR!" EFFECTIVE_DIR
+
 set "LOG=%TMPD%\%NAME%.log"
 set "STATUS_FILE=%TMPD%\%NAME%.status"
 set "DONE_FILE=%TMPD%\%NAME%.done"
 
 > "%LOG%"  echo === Worker for %NAME% (%DATE% %TIME%) ===
->> "%LOG%" echo path=%PATHDIR%  master=%MASTER_BRANCH%  auto_merge=%AUTO_MERGE%
+>> "%LOG%" echo path=%PATHDIR%  resolved=!EFFECTIVE_DIR!  master=%MASTER_BRANCH%  auto_merge=%AUTO_MERGE%
 
 call :set_phase starting
 
-if not exist "%PATHDIR%" (
+if not exist "!EFFECTIVE_DIR!" (
     call :write_done "SKIPPED (path not found)"
     exit /b 0
 )
 
-pushd "%PATHDIR%" >> "%LOG%" 2>&1
+pushd "!EFFECTIVE_DIR!" >> "%LOG%" 2>&1
 if errorlevel 1 (
     call :write_done "SKIPPED (pushd failed)"
     exit /b 0
@@ -684,4 +700,30 @@ REM ============================================================
 move /y "%STATUS_FILE%.tmp" "%STATUS_FILE%" >nul 2>&1
 > "%DONE_FILE%" echo %~1
 >> "%LOG%" echo === Result: %~1 ===
+goto :eof
+
+REM ============================================================
+REM :resolve_path  RAW_PATH  OUT_VAR_NAME
+REM   Joins WORKING_DIR with RAW_PATH unless RAW_PATH is already
+REM   absolute (starts with drive letter, backslash, or forward
+REM   slash). Falls back to %CD% when WORKING_DIR is empty.
+REM ============================================================
+:resolve_path
+set "_in=%~1"
+set "_outv=%~2"
+set "_root=!WORKING_DIR!"
+if "!_root!"=="" set "_root=%CD%"
+
+set "_abs=0"
+if not "!_in!"=="" if "!_in:~1,1!"==":" set "_abs=1"
+if not "!_in!"=="" if "!_in:~0,1!"=="\" set "_abs=1"
+if not "!_in!"=="" if "!_in:~0,1!"=="/" set "_abs=1"
+
+if "!_abs!"=="1" (
+    set "!_outv!=!_in!"
+) else if "!_in!"=="" (
+    set "!_outv!=!_root!"
+) else (
+    set "!_outv!=!_root!\!_in!"
+)
 goto :eof

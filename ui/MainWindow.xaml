@@ -54,7 +54,7 @@
             <TextBlock x:Name="ErrorText" Style="{DynamicResource ErrorBannerText}" />
         </Border>
 
-        <!-- ===== Main two-pane area: left = wide repo list, right = detail+post-sync stack ===== -->
+        <!-- ===== Main two-pane area: left = wide repo list, right = working-dir + detail + post-sync stack ===== -->
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*" />
@@ -197,14 +197,44 @@
                 </Grid>
             </Border>
 
-            <!-- Right column: detail editor + post-sync card stacked -->
+            <!-- Right column: working-dir + detail editor + post-sync card stacked -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />       <!-- working-dir card -->
                     <RowDefinition Height="*" />          <!-- detail editor takes remaining space -->
                     <RowDefinition Height="Auto" />       <!-- post-sync card -->
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Style="{DynamicResource CardSoft}">
+                <!-- Working directory card pinned to top of right column -->
+                <Border Grid.Row="0" Style="{DynamicResource Card}" Padding="14,12">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="WORKING DIRECTORY"
+                                   Style="{DynamicResource SectionLabel}" Margin="0,0,0,6" />
+
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="TxtWorkingDir" Grid.Column="0"
+                                     Style="{DynamicResource TextBoxStyle}" />
+                            <Button  x:Name="BtnBrowseWorkingDir" Grid.Column="1"
+                                     Style="{DynamicResource SecondaryButtonSmall}"
+                                     Content="Browse…" Margin="6,0,0,0" />
+                        </Grid>
+
+                        <TextBlock Grid.Row="2" Style="{DynamicResource Hint}" Margin="0,4,0,0"
+                                   Text="Root for relative repo paths and the post-sync command. Leave blank to use the shell's current directory." />
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="1" Style="{DynamicResource CardSoft}" Margin="0,14,0,0">
                     <Grid x:Name="DetailPanel">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -236,7 +266,7 @@
                                      Content="Browse…" Margin="6,0,0,0" />
                         </Grid>
                         <TextBlock Grid.Row="5" Style="{DynamicResource Hint}" Margin="0,4,0,0"
-                                   Text="Absolute path to the local repository folder." />
+                                   Text="Absolute path, or a name/relative path under the working directory above." />
 
                         <TextBlock Grid.Row="6" Text="Master branch" Style="{DynamicResource FieldLabel}" Margin="0,12,0,4" />
                         <TextBox  x:Name="TxtMaster" Grid.Row="7" Style="{DynamicResource TextBoxStyle}"
@@ -250,8 +280,9 @@
                 </Border>
 
                 <!-- Empty-state overlay -->
-                <Border x:Name="EmptyState" Grid.Row="0"
+                <Border x:Name="EmptyState" Grid.Row="1"
                         Style="{DynamicResource CardSoft}"
+                        Margin="0,14,0,0"
                         Visibility="Collapsed">
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                         <TextBlock Text="No repository selected"
@@ -265,7 +296,7 @@
                 </Border>
 
                 <!-- Post-sync card pinned to bottom of right column -->
-                <Border Grid.Row="1" Style="{DynamicResource Card}" Margin="0,14,0,0" Padding="14,12">
+                <Border Grid.Row="2" Style="{DynamicResource Card}" Margin="0,14,0,0" Padding="14,12">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />

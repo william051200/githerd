@@ -56,8 +56,9 @@ GitHerd also pings GitHub at most **once per day after 12:00 PM Malaysia time** 
 
 ```json
 {
+    "working_dir": "C:\\code",
     "repos": [
-        { "name": "my-repo-a", "path": ".\\my-repo-a",         "master": "main", "auto_merge": true  },
+        { "name": "my-repo-a", "path": "my-repo-a",            "master": "main", "auto_merge": true  },
         { "name": "my-repo-b", "path": "C:\\code\\my-repo-b",  "master": "main", "auto_merge": false }
     ],
     "final_command": "",
@@ -67,8 +68,9 @@ GitHerd also pings GitHub at most **once per day after 12:00 PM Malaysia time** 
 
 | Field | Quick meaning |
 |---|---|
+| `working_dir` | Optional root folder. Relative repo `path`s are resolved against it, and `final_command` runs from it. Leave `""` to use the shell's current directory. |
 | `name` | Friendly label / log file name. |
-| `path` | Absolute (`C:\code\repo`) or relative to where you launch `githerd`. |
+| `path` | Absolute (`C:\code\repo`) or relative to `working_dir` (e.g. `my-repo-a`). |
 | `master` | The branch to sync (e.g. `main`, `master`, `dev`). |
 | `auto_merge` | `true` = fetch upstream + ff-merge + push origin. `false` = just `git pull origin <master>`. |
 | `final_command` | Optional command to run once after all repos finish (`""` to skip). |
