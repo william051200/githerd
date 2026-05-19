@@ -57,9 +57,9 @@
         <!-- ===== Main two-pane area: left = wide repo list, right = working-dir + detail + post-sync stack ===== -->
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="3*" />
                 <ColumnDefinition Width="20" />
-                <ColumnDefinition Width="1*" />
+                <ColumnDefinition Width="2*" />
             </Grid.ColumnDefinitions>
 
             <!-- Left: repo list -->
@@ -235,7 +235,9 @@
                 </Border>
 
                 <Border Grid.Row="1" Style="{DynamicResource CardSoft}" Margin="0,14,0,0">
-                    <Grid x:Name="DetailPanel">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <Grid x:Name="DetailPanel">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -276,7 +278,8 @@
                                   Style="{DynamicResource CheckBoxStyle}"
                                   Content="Auto-merge upstream/master into the working branch"
                                   Margin="0,14,0,0" />
-                    </Grid>
+                        </Grid>
+                    </ScrollViewer>
                 </Border>
 
                 <!-- Empty-state overlay -->
