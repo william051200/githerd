@@ -98,6 +98,7 @@ that don't exist locally so you can update them before saving.
 - [UI design](docs/ui-design.md) — how the WPF config window maps to [`DESIGN.md`](DESIGN.md).
 - [Troubleshooting](docs/troubleshooting.md) — common failures and fixes.
 - [Reference](docs/reference.md) — exit codes and per-repo status strings.
+- [Release notes format](docs/release-notes.md) — template for GitHub Release bodies (read this before cutting a new tag).
 
 ---
 
