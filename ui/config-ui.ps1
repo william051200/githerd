@@ -228,7 +228,8 @@ $window.Resources.MergedDictionaries.Add($theme)
 # ---- Resolve named controls -------------------------------------------------
 $ctl = @{}
 foreach ($n in 'ErrorBox','ErrorText','RepoList','RepoCount','BtnAdd','BtnRemove',
-                'BtnImport','BtnExport','LblVersion',
+                'BtnImport','BtnExport','BtnHelp','LblVersion',
+                'MenuReportBug','MenuSuggest','MenuOpenReadme',
                 'TxtWorkingDir','BtnBrowseWorkingDir',
                 'DetailPanel','EmptyState','TxtName','TxtPath','BtnBrowse','TxtMaster',
                 'ChkAutoMerge','TxtFinal','TxtTimeout','BtnCancel','BtnSave','BtnSaveRun') {
@@ -585,6 +586,32 @@ $ctl.BtnImport.Add_Click({
         Show-Info ("Imported from {0}" -f $dlg.FileName)
     }
 })
+
+# ---- Help menu --------------------------------------------------------------
+$script:HelpUrls = @{
+    Bug        = 'https://github.com/william051200/githerd/issues/new?template=bug.yml'
+    Suggestion = 'https://github.com/william051200/githerd/issues/new?template=suggestion.yml'
+    Readme     = 'https://github.com/william051200/githerd#readme'
+}
+
+function Open-Url([string]$url) {
+    try {
+        Start-Process $url | Out-Null
+    } catch {
+        Show-Error ("Couldn't open {0}: {1}" -f $url, $_.Exception.Message)
+    }
+}
+
+$ctl.BtnHelp.Add_Click({
+    $menu = $ctl.BtnHelp.ContextMenu
+    if ($null -eq $menu) { return }
+    $menu.PlacementTarget = $ctl.BtnHelp
+    $menu.Placement       = [System.Windows.Controls.Primitives.PlacementMode]::Bottom
+    $menu.IsOpen          = $true
+})
+$ctl.MenuReportBug.Add_Click({  Open-Url $script:HelpUrls.Bug })
+$ctl.MenuSuggest.Add_Click({    Open-Url $script:HelpUrls.Suggestion })
+$ctl.MenuOpenReadme.Add_Click({ Open-Url $script:HelpUrls.Readme })
 
 # ---- Validate + save --------------------------------------------------------
 function Validate-And-Build {

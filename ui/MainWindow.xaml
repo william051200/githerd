@@ -32,6 +32,20 @@
                         Content="↓ Export"
                         Margin="6,0,0,0"
                         ToolTip="Export current config to a .json file" />
+                <Button x:Name="BtnHelp"
+                        Style="{DynamicResource SecondaryButtonSmall}"
+                        Content="❔ Help"
+                        Margin="6,0,0,0"
+                        ToolTip="Report a bug, suggest a feature, or open the README">
+                    <Button.ContextMenu>
+                        <ContextMenu x:Name="HelpMenu">
+                            <MenuItem x:Name="MenuReportBug"   Header="🐞  Report a bug…" />
+                            <MenuItem x:Name="MenuSuggest"     Header="💡  Suggest a feature…" />
+                            <Separator />
+                            <MenuItem x:Name="MenuOpenReadme"  Header="📖  Open README" />
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
             </StackPanel>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="GitHerd" Style="{DynamicResource DisplayTitle}" />

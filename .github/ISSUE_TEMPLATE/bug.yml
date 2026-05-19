@@ -1,0 +1,49 @@
+name: 🐞 Bug report
+description: Something in GitHerd doesn't behave the way it should.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: GitHerd version
+      description: From the title bar of the config UI, or `githerd --version`.
+      placeholder: "v0.3.4"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Windows + PowerShell version
+      description: e.g. "Windows 11 23H2, PowerShell 5.1.22621"
+      placeholder: "Windows 11 23H2, PowerShell 5.1.x"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you did
+      description: The exact steps to reproduce, including any config snippet (with secrets redacted).
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Include the error message verbatim if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or sync.bat output (optional)
+      description: Paste any relevant terminal output. Triple-backticks make it readable.
+      render: shell
+    validations:
+      required: false

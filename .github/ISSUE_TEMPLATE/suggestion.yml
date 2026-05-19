@@ -1,0 +1,33 @@
+name: 💡 Feature suggestion
+description: Suggest a new feature or improvement for GitHerd.
+title: "[Suggestion] "
+labels: ["enhancement"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: GitHerd version you're on
+      placeholder: "v0.3.4"
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: What are you trying to do?
+      description: Describe the use case, not the solution. "I have N repos and I want to…"
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: What should GitHerd do?
+      description: Your suggested behavior. Sketches of UI / config / CLI welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered (optional)
+      description: Workarounds you tried, or other ways to solve the same problem.
+    validations:
+      required: false
