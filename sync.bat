@@ -182,11 +182,24 @@ if errorlevel 1 (
     echo [ERROR] PowerShell is required to run the configuration UI.
     endlocal & exit /b 1
 )
+REM Refresh the update-check cache so the UI banner is up-to-date.
+REM The PS script throttles itself (once/day after noon MYT) and never fails.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%UPDATE_CHECK_PS%" -Quiet >nul 2>&1
 powershell -NoProfile -ExecutionPolicy Bypass -File "%UI_SCRIPT%" "%CONFIG_PATH%"
 set "UI_RC=%ERRORLEVEL%"
 if "%UI_RC%"=="10" (
     echo [INFO] Configuration saved. Starting sync...
     goto :after_ui_dispatch
+)
+if "%UI_RC%"=="20" (
+    echo [INFO] Updating GitHerd...
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%UPDATE_PS%"
+    if errorlevel 1 (
+        echo [ERROR] Update failed. The previous version is still installed.
+        endlocal & exit /b 1
+    )
+    echo [INFO] Update complete. Re-opening the configuration window...
+    goto :launch_ui
 )
 endlocal & exit /b %UI_RC%
 

@@ -14,9 +14,10 @@
     <Grid Margin="32,24,32,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />        <!-- 0 header -->
-            <RowDefinition Height="Auto" />        <!-- 1 error banner -->
-            <RowDefinition Height="*" />           <!-- 2 main two-pane area -->
-            <RowDefinition Height="Auto" />        <!-- 3 footer buttons -->
+            <RowDefinition Height="Auto" />        <!-- 1 update banner -->
+            <RowDefinition Height="Auto" />        <!-- 2 error banner -->
+            <RowDefinition Height="*" />           <!-- 3 main two-pane area -->
+            <RowDefinition Height="Auto" />        <!-- 4 footer buttons -->
         </Grid.RowDefinitions>
 
         <!-- ===== Header (inline) ===== -->
@@ -42,6 +43,8 @@
                             <MenuItem x:Name="MenuReportBug"   Header="🐞  Report a bug…" />
                             <MenuItem x:Name="MenuSuggest"     Header="💡  Suggest a feature…" />
                             <Separator />
+                            <MenuItem x:Name="MenuCheckUpdates" Header="🔄  Check for updates…" />
+                            <Separator />
                             <MenuItem x:Name="MenuOpenReadme"  Header="📖  Open README" />
                         </ContextMenu>
                     </Button.ContextMenu>
@@ -60,16 +63,57 @@
             </StackPanel>
         </DockPanel>
 
-        <!-- ===== Error banner (hidden by default) ===== -->
-        <Border x:Name="ErrorBox" Grid.Row="1"
+        <!-- ===== Update-available banner (hidden by default) ===== -->
+        <Border x:Name="UpdateBanner" Grid.Row="1"
+                Style="{DynamicResource UpdateBanner}"
+                Margin="0,0,0,14"
+                Visibility="Collapsed">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <Button x:Name="BtnWhatsNew"
+                            Style="{DynamicResource SecondaryButtonSmall}"
+                            Content="What’s new"
+                            ToolTip="Open the release notes on GitHub" />
+                    <Button x:Name="BtnUpdateNow"
+                            Style="{DynamicResource PrimaryButton}"
+                            Content="Update now"
+                            Margin="8,0,0,0"
+                            ToolTip="Download and install the latest GitHerd, then re-open this window" />
+                    <Button x:Name="BtnDismissUpdate"
+                            Style="{DynamicResource SecondaryButtonSmall}"
+                            Content="✕"
+                            Margin="8,0,0,0"
+                            ToolTip="Hide this notice until an even newer version is released" />
+                </StackPanel>
+                <TextBlock x:Name="UpdateBannerText"
+                           Style="{DynamicResource UpdateBannerText}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0" />
+            </DockPanel>
+        </Border>
+
+        <!-- ===== Error / info banner (hidden by default) ===== -->
+        <Border x:Name="ErrorBox" Grid.Row="2"
                 Style="{DynamicResource ErrorBanner}"
                 Margin="0,0,0,14"
                 Visibility="Collapsed">
-            <TextBlock x:Name="ErrorText" Style="{DynamicResource ErrorBannerText}" />
+            <DockPanel LastChildFill="True">
+                <Button x:Name="BtnDismissBanner"
+                        DockPanel.Dock="Right"
+                        Style="{DynamicResource SecondaryButtonSmall}"
+                        Content="✕"
+                        VerticalAlignment="Center"
+                        Margin="12,0,0,0"
+                        ToolTip="Dismiss this notice" />
+                <TextBlock x:Name="ErrorText"
+                           Style="{DynamicResource ErrorBannerText}"
+                           VerticalAlignment="Center" />
+            </DockPanel>
         </Border>
 
         <!-- ===== Main two-pane area: left = wide repo list, right = working-dir + detail + post-sync stack ===== -->
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="3*" />
                 <ColumnDefinition Width="20" />
@@ -353,7 +397,7 @@
         </Grid>
 
         <!-- ===== Footer ===== -->
-        <DockPanel Grid.Row="3" LastChildFill="False" Margin="0,16,0,0">
+        <DockPanel Grid.Row="4" LastChildFill="False" Margin="0,16,0,0">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button x:Name="BtnCancel"  Style="{DynamicResource SecondaryButton}" Content="Cancel" />
                 <Button x:Name="BtnSave"    Style="{DynamicResource SecondaryButton}" Content="Save"     Margin="10,0,0,0" />

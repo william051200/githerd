@@ -1,4 +1,4 @@
-#Requires -Version 5.0
+﻿#Requires -Version 5.0
 <#
 .SYNOPSIS
     WPF editor for githerd's config.json.
@@ -10,6 +10,7 @@
     Exit codes (preserved contract used by sync.bat):
       0  - Saved and closed
       10 - Saved with "Save & Run" (caller should launch the sync)
+      20 - User clicked "Update now" (caller should run lib\update.ps1 then re-launch the UI)
       2  - User cancelled
       1  - Error
 #>
@@ -227,9 +228,10 @@ $window.Resources.MergedDictionaries.Add($theme)
 
 # ---- Resolve named controls -------------------------------------------------
 $ctl = @{}
-foreach ($n in 'ErrorBox','ErrorText','RepoList','RepoCount','BtnAdd','BtnRemove',
+foreach ($n in 'ErrorBox','ErrorText','BtnDismissBanner','RepoList','RepoCount','BtnAdd','BtnRemove',
                 'BtnImport','BtnExport','BtnHelp','LblVersion',
-                'MenuReportBug','MenuSuggest','MenuOpenReadme',
+                'MenuReportBug','MenuSuggest','MenuCheckUpdates','MenuOpenReadme',
+                'UpdateBanner','UpdateBannerText','BtnWhatsNew','BtnUpdateNow','BtnDismissUpdate',
                 'TxtWorkingDir','BtnBrowseWorkingDir',
                 'DetailPanel','EmptyState','TxtName','TxtPath','BtnBrowse','TxtMaster',
                 'ChkAutoMerge','TxtFinal','TxtTimeout','BtnCancel','BtnSave','BtnSaveRun') {
@@ -308,6 +310,8 @@ function Show-Info {
     $ctl.ErrorText.Text = $Message
     $ctl.ErrorBox.Visibility = 'Visible'
 }
+
+$ctl.BtnDismissBanner.Add_Click({ Show-Error $null })
 
 function Bind-Detail {
     param($Vm)
@@ -612,6 +616,130 @@ $ctl.BtnHelp.Add_Click({
 $ctl.MenuReportBug.Add_Click({  Open-Url $script:HelpUrls.Bug })
 $ctl.MenuSuggest.Add_Click({    Open-Url $script:HelpUrls.Suggestion })
 $ctl.MenuOpenReadme.Add_Click({ Open-Url $script:HelpUrls.Readme })
+
+# ---- Update notification ----------------------------------------------------
+$script:UpdateCacheDir   = Join-Path $env:LOCALAPPDATA 'GitHerd'
+$script:UpdateCacheFile  = Join-Path $script:UpdateCacheDir 'update-check.json'
+$script:UpdateDismissFile = Join-Path $script:UpdateCacheDir 'update-dismissed.json'
+$script:UpdateCheckPs    = Join-Path $PSScriptRoot '..\lib\update-check.ps1'
+$script:LatestTag        = $null   # set when banner is shown
+
+function Normalize-Tag([string]$Tag) {
+    if ([string]::IsNullOrWhiteSpace($Tag)) { return $null }
+    return $Tag.Trim().TrimStart('v','V')
+}
+
+function Compare-SemVer([string]$A, [string]$B) {
+    $pa = ($A -split '[.+-]') | ForEach-Object { [int]($_ -replace '\D','0') }
+    $pb = ($B -split '[.+-]') | ForEach-Object { [int]($_ -replace '\D','0') }
+    $len = [Math]::Max($pa.Count, $pb.Count)
+    for ($i = 0; $i -lt $len; $i++) {
+        $x = if ($i -lt $pa.Count) { $pa[$i] } else { 0 }
+        $y = if ($i -lt $pb.Count) { $pb[$i] } else { 0 }
+        if ($x -lt $y) { return -1 }
+        if ($x -gt $y) { return  1 }
+    }
+    return 0
+}
+
+function Get-DismissedTag {
+    if (-not (Test-Path -LiteralPath $script:UpdateDismissFile)) { return $null }
+    try {
+        $raw = Get-Content -LiteralPath $script:UpdateDismissFile -Raw -ErrorAction Stop
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+        $obj = $raw | ConvertFrom-Json -ErrorAction Stop
+        return [string]$obj.dismissed_tag
+    } catch { return $null }
+}
+
+function Set-DismissedTag([string]$Tag) {
+    try {
+        if (-not (Test-Path -LiteralPath $script:UpdateCacheDir)) {
+            New-Item -ItemType Directory -Path $script:UpdateCacheDir -Force | Out-Null
+        }
+        @{ dismissed_tag = $Tag } | ConvertTo-Json | Set-Content -LiteralPath $script:UpdateDismissFile -Encoding UTF8
+    } catch {}
+}
+
+function Get-LatestTagFromCache {
+    if (-not (Test-Path -LiteralPath $script:UpdateCacheFile)) { return $null }
+    try {
+        $raw = Get-Content -LiteralPath $script:UpdateCacheFile -Raw -ErrorAction Stop
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+        $obj = $raw | ConvertFrom-Json -ErrorAction Stop
+        return [string]$obj.latest_tag
+    } catch { return $null }
+}
+
+function Refresh-UpdateBanner {
+    param([switch]$RespectDismiss)
+
+    $ctl.UpdateBanner.Visibility = 'Collapsed'
+    $script:LatestTag = $null
+
+    if (-not $ghVersion) { return $false }
+
+    $tag = Get-LatestTagFromCache
+    $latestNum = Normalize-Tag $tag
+    if (-not $latestNum) { return $false }
+
+    if ((Compare-SemVer $ghVersion $latestNum) -ge 0) { return $false }
+
+    if ($RespectDismiss) {
+        $dismissed = Normalize-Tag (Get-DismissedTag)
+        if ($dismissed -and (Compare-SemVer $dismissed $latestNum) -ge 0) {
+            return $false
+        }
+    }
+
+    $script:LatestTag = $tag
+    $ctl.UpdateBannerText.Text = ("🎉  GitHerd v{0} is available. You're on v{1}." -f $latestNum, $ghVersion)
+    $ctl.UpdateBanner.Visibility = 'Visible'
+    return $true
+}
+
+$ctl.BtnWhatsNew.Add_Click({
+    if ([string]::IsNullOrWhiteSpace($script:LatestTag)) { return }
+    $tag = $script:LatestTag
+    if (-not $tag.StartsWith('v')) { $tag = 'v' + $tag.TrimStart('v','V') }
+    Open-Url ("https://github.com/william051200/githerd/releases/tag/" + $tag)
+})
+
+$ctl.BtnDismissUpdate.Add_Click({
+    if ($script:LatestTag) { Set-DismissedTag $script:LatestTag }
+    $ctl.UpdateBanner.Visibility = 'Collapsed'
+})
+
+$ctl.BtnUpdateNow.Add_Click({
+    $script:resultExitCode = 20
+    $window.Close()
+})
+
+$ctl.MenuCheckUpdates.Add_Click({
+    if (-not (Test-Path -LiteralPath $script:UpdateCheckPs)) {
+        Show-Error "update-check.ps1 is missing - reinstall GitHerd."
+        return
+    }
+    Show-Info "Checking for updates..."
+    try {
+        # -Force ignores the daily throttle; -Quiet suppresses console output.
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $script:UpdateCheckPs -Force -Quiet | Out-Null
+    } catch {
+        Show-Error ("Update check failed: " + $_.Exception.Message)
+        return
+    }
+    # Force-refresh: ignore dismissal so the user sees the result of an explicit check.
+    if (Refresh-UpdateBanner) {
+        Show-Error $null
+    } else {
+        $tag = Normalize-Tag (Get-LatestTagFromCache)
+        if (-not $tag) { $tag = $ghVersion }
+        Show-Info ("You're up to date - v{0}." -f $tag)
+    }
+})
+
+# Initial banner render (honors dismissal).
+[void](Refresh-UpdateBanner -RespectDismiss)
 
 # ---- Validate + save --------------------------------------------------------
 function Validate-And-Build {
