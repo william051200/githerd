@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Pester (${{ matrix.shell }})
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shell: powershell   # Windows PowerShell 5.1
+          - shell: pwsh         # PowerShell 7+
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Pester module
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\Documents\PowerShell\Modules\Pester
+            ~\Documents\WindowsPowerShell\Modules\Pester
+          key: pester-5.7.1-${{ runner.os }}
+
+      - name: Run tests (${{ matrix.shell }})
+        shell: ${{ matrix.shell }}
+        run: |
+          tests\Invoke-Tests.ps1
