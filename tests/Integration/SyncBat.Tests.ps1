@@ -31,9 +31,41 @@ Describe 'sync.bat integration' -Tag 'Integration' {
             $needBuild = (Get-Item $src).LastWriteTimeUtc -gt (Get-Item $exe).LastWriteTimeUtc
         }
         if ($needBuild) {
-            $code = Get-Content -LiteralPath $src -Raw
             if (Test-Path $exe) { Remove-Item $exe -Force }
-            Add-Type -TypeDefinition $code -OutputAssembly $exe -OutputType ConsoleApplication
+
+            # Add-Type -OutputType ConsoleApplication only works on Windows
+            # PowerShell 5.1 (.NET Framework). On PowerShell 7+ it throws
+            # "PSNotSupportedException: Both the assembly types
+            # 'ConsoleApplication' and 'WindowsApplication' are not currently
+            # supported." Fall back to calling csc.exe from the .NET
+            # Framework directly - it ships with Windows so it is always
+            # present on windows-latest runners.
+            $built = $false
+            if ($PSVersionTable.PSEdition -eq 'Desktop') {
+                try {
+                    $code = Get-Content -LiteralPath $src -Raw
+                    Add-Type -TypeDefinition $code -OutputAssembly $exe -OutputType ConsoleApplication
+                    $built = Test-Path $exe
+                } catch {
+                    $built = $false
+                }
+            }
+
+            if (-not $built) {
+                $cscCandidates = @(
+                    'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe',
+                    'C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe'
+                )
+                $csc = $cscCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+                if (-not $csc) {
+                    throw "Could not locate csc.exe to build fake git.exe. Tried: $($cscCandidates -join ', ')"
+                }
+                & $csc /nologo /target:exe /out:$exe $src | Out-Null
+                if ($LASTEXITCODE -ne 0) {
+                    throw "csc.exe failed (exit $LASTEXITCODE) while building fake git.exe."
+                }
+            }
+
             if (-not (Test-Path $exe)) {
                 throw "Failed to build fake git.exe at $exe"
             }

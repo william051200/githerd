@@ -35,9 +35,9 @@ jobs:
           key: pester-5.7.1-${{ runner.os }}
 
       - name: Run tests (${{ matrix.shell }})
-        shell: ${{ matrix.shell }}
+        shell: cmd
         run: |
-          tests\Invoke-Tests.ps1 -IncludeIntegration
+          ${{ matrix.shell }} -NoProfile -ExecutionPolicy Bypass -File tests\Invoke-Tests.ps1 -IncludeIntegration
 
   lint:
     name: PSScriptAnalyzer
