@@ -28,6 +28,8 @@ $ErrorActionPreference = 'SilentlyContinue'   # never crash sync.bat
 
 if ($env:GITHERD_NO_UPDATE_CHECK -eq '1') { exit 0 }
 
+. (Join-Path $PSScriptRoot 'version-utils.ps1')
+
 $Owner = 'william051200'
 $Repo  = 'githerd'
 
@@ -35,24 +37,6 @@ function Get-LocalVersion {
     $vf = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..')).Path 'VERSION'
     if (-not (Test-Path -LiteralPath $vf)) { return $null }
     try { return ((Get-Content -LiteralPath $vf -Raw).Trim()) } catch { return $null }
-}
-
-function Normalize-Tag([string]$Tag) {
-    if ([string]::IsNullOrWhiteSpace($Tag)) { return $null }
-    return $Tag.Trim().TrimStart('v','V')
-}
-
-function Compare-SemVer([string]$A, [string]$B) {
-    $pa = ($A -split '[.+-]') | ForEach-Object { [int]($_ -replace '\D','0') }
-    $pb = ($B -split '[.+-]') | ForEach-Object { [int]($_ -replace '\D','0') }
-    $len = [Math]::Max($pa.Count, $pb.Count)
-    for ($i = 0; $i -lt $len; $i++) {
-        $x = if ($i -lt $pa.Count) { $pa[$i] } else { 0 }
-        $y = if ($i -lt $pb.Count) { $pb[$i] } else { 0 }
-        if ($x -lt $y) { return -1 }
-        if ($x -gt $y) { return  1 }
-    }
-    return 0
 }
 
 function Get-CacheFile {

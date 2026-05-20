@@ -36,6 +36,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'version-utils.ps1')
+
 $Owner = 'william051200'
 $Repo  = 'githerd'
 
@@ -56,24 +58,6 @@ function Get-LocalVersion([string]$InstallDir) {
         if ([string]::IsNullOrWhiteSpace($v)) { return $null }
         return $v
     } catch { return $null }
-}
-
-function Normalize-Tag([string]$Tag) {
-    if ([string]::IsNullOrWhiteSpace($Tag)) { return $null }
-    return $Tag.Trim().TrimStart('v','V')
-}
-
-function Compare-SemVer([string]$A, [string]$B) {
-    $pa = ($A -split '[.+-]') | ForEach-Object { [int]($_ -replace '\D','0') }
-    $pb = ($B -split '[.+-]') | ForEach-Object { [int]($_ -replace '\D','0') }
-    $len = [Math]::Max($pa.Count, $pb.Count)
-    for ($i = 0; $i -lt $len; $i++) {
-        $x = if ($i -lt $pa.Count) { $pa[$i] } else { 0 }
-        $y = if ($i -lt $pb.Count) { $pb[$i] } else { 0 }
-        if ($x -lt $y) { return -1 }
-        if ($x -gt $y) { return  1 }
-    }
-    return 0
 }
 
 function Get-LatestTag {
