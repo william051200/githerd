@@ -37,7 +37,7 @@ jobs:
       - name: Run tests (${{ matrix.shell }})
         shell: ${{ matrix.shell }}
         run: |
-          tests\Invoke-Tests.ps1
+          tests\Invoke-Tests.ps1 -IncludeIntegration
 
   lint:
     name: PSScriptAnalyzer

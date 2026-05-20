@@ -6,3 +6,6 @@ githerd_loader_*.cmd
 
 # Release build output
 dist/
+
+# Compiled fake git used by integration tests (rebuilt on demand from FakeGit.cs)
+tests/Integration/FakeGit/git.exe
