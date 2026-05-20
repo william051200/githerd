@@ -74,9 +74,9 @@ BeforeAll {
         $stdout = [System.IO.Path]::GetTempFileName()
         $stderr = [System.IO.Path]::GetTempFileName()
         try {
-            $args = @('-NoProfile','-File',$script,'-Version',$Version)
-            if ($OutDir) { $args += @('-OutDir', $OutDir) }
-            $p = Start-Process -FilePath $psExe -ArgumentList $args `
+            $argList = @('-NoProfile','-File',$script,'-Version',$Version)
+            if ($OutDir) { $argList += @('-OutDir', $OutDir) }
+            $p = Start-Process -FilePath $psExe -ArgumentList $argList `
                 -NoNewWindow -Wait -PassThru `
                 -RedirectStandardOutput $stdout -RedirectStandardError $stderr
             return [pscustomobject]@{
