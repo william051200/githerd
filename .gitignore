@@ -9,3 +9,7 @@ dist/
 
 # Compiled fake git used by integration tests (rebuilt on demand from FakeGit.cs)
 tests/Integration/FakeGit/git.exe
+
+# Pester test output (NUnit XML)
+testResults.xml
+testresults.xml
