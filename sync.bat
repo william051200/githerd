@@ -12,6 +12,13 @@ REM   finish before running the configured final command and
 REM   printing the summary.
 REM
 REM   Per repo:
+REM     * Probe remote tip(s) with `git ls-remote`. If the local
+REM       master SHA already matches every required remote SHA,
+REM       skip the rest of the sync entirely (no stash, no
+REM       checkout, no fetch, no merge, no pull, no push).
+REM       - auto_merge=true: skip only if BOTH origin/<master>
+REM         and upstream/<master> already equal local.
+REM       - auto_merge=false: skip if origin/<master> equals local.
 REM     * If working tree is dirty -> auto-stash, sync, pop stash
 REM     * Switch to master branch
 REM     * Fetch upstream + origin
@@ -455,7 +462,8 @@ set "P=%~1"
 set "RANGE_MIN=0"
 set "RANGE_MAX=0"
 if /I "%P%"=="starting"          ( set "RANGE_MIN=0"   & set "RANGE_MAX=5"   & goto :eof )
-if /I "%P%"=="stashing"          ( set "RANGE_MIN=5"   & set "RANGE_MAX=15"  & goto :eof )
+if /I "%P%"=="checking remote"   ( set "RANGE_MIN=5"   & set "RANGE_MAX=10"  & goto :eof )
+if /I "%P%"=="stashing"          ( set "RANGE_MIN=10"  & set "RANGE_MAX=15"  & goto :eof )
 if /I "%P%"=="checkout master"   ( set "RANGE_MIN=15"  & set "RANGE_MAX=20"  & goto :eof )
 if /I "%P%"=="fetching upstream" ( set "RANGE_MIN=20"  & set "RANGE_MAX=40"  & goto :eof )
 if /I "%P%"=="fetching origin"   ( set "RANGE_MIN=40"  & set "RANGE_MAX=55"  & goto :eof )
@@ -573,6 +581,42 @@ if not exist ".git" (
     popd
     exit /b 0
 )
+
+REM --- Up-to-date probe ---------------------------------------------
+REM   Use `git ls-remote` (no object transfer) to check whether the
+REM   local master SHA already matches the remote tip(s). If so,
+REM   skip the entire sync: no stash, no checkout, no fetch, no
+REM   merge, no pull, no push. On any failure, fall through to the
+REM   normal flow so behavior never regresses.
+call :set_phase "checking remote"
+set "LOCAL_SHA="
+for /f "delims=" %%S in ('git rev-parse %MASTER_BRANCH% 2^>nul') do set "LOCAL_SHA=%%S"
+if not defined LOCAL_SHA goto :probe_done
+
+set "ORIGIN_REMOTE_SHA="
+for /f "tokens=1" %%S in ('git ls-remote origin %MASTER_BRANCH% 2^>nul') do set "ORIGIN_REMOTE_SHA=%%S"
+if not defined ORIGIN_REMOTE_SHA (
+    >> "%LOG%" echo [INFO] ls-remote origin failed or returned no ref; falling through to full sync.
+    goto :probe_done
+)
+if /I "!ORIGIN_REMOTE_SHA!" NEQ "!LOCAL_SHA!" goto :probe_done
+
+if /I "%AUTO_MERGE%"=="true" (
+    set "UPSTREAM_REMOTE_SHA="
+    for /f "tokens=1" %%S in ('git ls-remote upstream %MASTER_BRANCH% 2^>nul') do set "UPSTREAM_REMOTE_SHA=%%S"
+    if not defined UPSTREAM_REMOTE_SHA (
+        >> "%LOG%" echo [INFO] ls-remote upstream failed or returned no ref; falling through to full sync.
+        goto :probe_done
+    )
+    if /I "!UPSTREAM_REMOTE_SHA!" NEQ "!LOCAL_SHA!" goto :probe_done
+)
+
+>> "%LOG%" echo [INFO] Remote already up to date (local=!LOCAL_SHA!); skipping fetch/merge/pull.
+call :write_done "OK (already up to date)"
+popd
+exit /b 0
+
+:probe_done
 
 REM --- Detect dirty tree ---
 set "DIRTY="
