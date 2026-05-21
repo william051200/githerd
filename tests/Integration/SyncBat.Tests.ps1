@@ -337,4 +337,98 @@ exit /b 0
         $logPath = ($line -split '::', 2)[1].Trim()
         Test-Path $logPath | Should -BeTrue
     }
+
+    It 'fast-path: auto_merge=true skips fetch/merge/push when local==origin==upstream' {
+        New-FakeRepo -Name 'uptodate' | Out-Null
+        Write-Config -Repos @(
+            @{ name = 'uptodate'; path = 'uptodate'; master = 'main'; auto_merge = $true }
+        )
+
+        $r = Invoke-Sync -EnvVars @{
+            FAKEGIT_LOCAL_SHA    = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+            FAKEGIT_ORIGIN_SHA   = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+            FAKEGIT_UPSTREAM_SHA = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        }
+
+        $r.ExitCode | Should -Be 0
+        $r.Stdout | Should -Match 'uptodate\s+::\s+OK \(already up to date\)'
+        $r.Stdout | Should -Match 'Totals: ok=1\s+failed=0\s+skipped=0'
+
+        $firsts = $r.GitCalls | ForEach-Object { ($_ -split '\|', 2)[1].Split(' ')[0] }
+        $firsts | Should -Contain 'rev-parse'
+        $firsts | Should -Contain 'ls-remote'
+        $firsts | Should -Not -Contain 'fetch'
+        $firsts | Should -Not -Contain 'merge'
+        $firsts | Should -Not -Contain 'pull'
+        $firsts | Should -Not -Contain 'push'
+        $firsts | Should -Not -Contain 'stash'
+        # And no checkout dance either, since branch matches master already
+        $firsts | Should -Not -Contain 'checkout'
+    }
+
+    It 'fast-path: auto_merge=false skips pull when local==origin' {
+        New-FakeRepo -Name 'uptodate2' | Out-Null
+        Write-Config -Repos @(
+            @{ name = 'uptodate2'; path = 'uptodate2'; master = 'main'; auto_merge = $false }
+        )
+
+        $r = Invoke-Sync -EnvVars @{
+            FAKEGIT_LOCAL_SHA  = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+            FAKEGIT_ORIGIN_SHA = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+        }
+
+        $r.ExitCode | Should -Be 0
+        $r.Stdout | Should -Match 'uptodate2\s+::\s+OK \(already up to date\)'
+
+        $firsts = $r.GitCalls | ForEach-Object { ($_ -split '\|', 2)[1].Split(' ')[0] }
+        $firsts | Should -Not -Contain 'pull'
+        $firsts | Should -Not -Contain 'fetch'
+        # Only origin should be probed when auto_merge=false (no upstream probe)
+        $lsRemoteRemotes = $r.GitCalls |
+            ForEach-Object { ($_ -split '\|', 2)[1] } |
+            Where-Object { $_ -like 'ls-remote *' } |
+            ForEach-Object { ($_ -split ' ')[1] }
+        $lsRemoteRemotes | Should -Contain 'origin'
+        $lsRemoteRemotes | Should -Not -Contain 'upstream'
+    }
+
+    It 'fast-path: falls through to full sync when origin SHA differs' {
+        New-FakeRepo -Name 'behind' | Out-Null
+        Write-Config -Repos @(
+            @{ name = 'behind'; path = 'behind'; master = 'main'; auto_merge = $false }
+        )
+
+        $r = Invoke-Sync -EnvVars @{
+            FAKEGIT_LOCAL_SHA  = 'cccccccccccccccccccccccccccccccccccccccc'
+            FAKEGIT_ORIGIN_SHA = 'dddddddddddddddddddddddddddddddddddddddd'
+        }
+
+        $r.ExitCode | Should -Be 0
+        $r.Stdout | Should -Match 'behind\s+::\s+OK\b'
+        $r.Stdout | Should -Not -Match 'already up to date'
+
+        $firsts = $r.GitCalls | ForEach-Object { ($_ -split '\|', 2)[1].Split(' ')[0] }
+        $firsts | Should -Contain 'pull'
+    }
+
+    It 'fast-path: auto_merge=true does NOT skip when upstream is ahead even if origin matches' {
+        New-FakeRepo -Name 'fork' | Out-Null
+        Write-Config -Repos @(
+            @{ name = 'fork'; path = 'fork'; master = 'main'; auto_merge = $true }
+        )
+
+        $r = Invoke-Sync -EnvVars @{
+            FAKEGIT_LOCAL_SHA    = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+            FAKEGIT_ORIGIN_SHA   = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+            FAKEGIT_UPSTREAM_SHA = 'ffffffffffffffffffffffffffffffffffffffff'
+        }
+
+        $r.ExitCode | Should -Be 0
+        $r.Stdout | Should -Not -Match 'already up to date'
+
+        $firsts = $r.GitCalls | ForEach-Object { ($_ -split '\|', 2)[1].Split(' ')[0] }
+        $firsts | Should -Contain 'fetch'
+        $firsts | Should -Contain 'merge'
+        $firsts | Should -Contain 'push'
+    }
 }

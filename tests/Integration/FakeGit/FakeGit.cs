@@ -22,6 +22,12 @@ using System.Threading;
 //                          (case-insensitive).
 //   FAKEGIT_FAIL_SECOND    If set, also require the second arg
 //                          to match to fail.
+//   FAKEGIT_LOCAL_SHA      SHA returned by "git rev-parse <branch>".
+//                          If unset, rev-parse prints nothing.
+//   FAKEGIT_ORIGIN_SHA     SHA used in "git ls-remote origin <branch>"
+//                          output. If unset, ls-remote prints nothing.
+//   FAKEGIT_UPSTREAM_SHA   SHA used in "git ls-remote upstream <branch>"
+//                          output. If unset, ls-remote prints nothing.
 // ============================================================
 
 internal static class FakeGit
@@ -70,6 +76,30 @@ internal static class FakeGit
                 branch = "main";
             }
             Console.WriteLine(branch);
+            return 0;
+        }
+
+        if (string.Equals(first, "rev-parse", StringComparison.OrdinalIgnoreCase))
+        {
+            var localSha = Environment.GetEnvironmentVariable("FAKEGIT_LOCAL_SHA");
+            if (!string.IsNullOrEmpty(localSha))
+            {
+                Console.WriteLine(localSha);
+            }
+            return 0;
+        }
+
+        if (string.Equals(first, "ls-remote", StringComparison.OrdinalIgnoreCase))
+        {
+            // args: ls-remote <remote> <branch>
+            string remote = args.Length > 1 ? args[1] : string.Empty;
+            string branch = args.Length > 2 ? args[2] : "main";
+            string envName = "FAKEGIT_" + remote.ToUpperInvariant() + "_SHA";
+            var sha = Environment.GetEnvironmentVariable(envName);
+            if (!string.IsNullOrEmpty(sha))
+            {
+                Console.WriteLine(sha + "\trefs/heads/" + branch);
+            }
             return 0;
         }
 
