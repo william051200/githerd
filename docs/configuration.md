@@ -27,7 +27,7 @@ You can edit `config.json` by hand, or use the GUI (`sync.bat --config`). The UI
 | `repos[].name` | string | Friendly name; also used as the log file name. Must be unique. |
 | `repos[].path` | string | Path to the repo. Absolute or relative to `working_dir`. See [Filling in `path`](#filling-in-path) below. |
 | `repos[].master` | string | The "master" branch for that repo (e.g. `main`, `master`, `dev`). |
-| `repos[].auto_merge` | bool | `true` = fetch `upstream` + ff-merge `upstream/<master>` + push to `origin`. `false` = just `git pull origin <master>`. |
+| `repos[].auto_merge` | bool | `true` = fetch/prune `upstream` and `origin` + ff-merge `upstream/<master>` + push to `origin`. `false` = pull/prune `origin/<master>`. |
 | `final_command` | string | Command run **after** all repos complete (sequentially, from `working_dir`). Set to `""` to skip. |
 | `max_wait_seconds` | number | Hard timeout (seconds) for any worker. After this, still-running workers are marked `FAILED (timeout)`. Default: `600`. |
 

@@ -72,7 +72,7 @@ GitHerd also pings GitHub at most **once per day after 12:00 PM Malaysia time** 
 | `name` | Friendly label / log file name. |
 | `path` | Absolute (`C:\code\repo`) or relative to `working_dir` (e.g. `my-repo-a`). |
 | `master` | The branch to sync (e.g. `main`, `master`, `dev`). |
-| `auto_merge` | `true` = fetch upstream + ff-merge + push origin. `false` = just `git pull origin <master>`. |
+| `auto_merge` | `true` = fetch/prune upstream and origin + ff-merge + push origin. `false` = pull/prune origin. |
 | `final_command` | Optional command to run once after all repos finish (`""` to skip). |
 
 > Tip: in the GUI, select a repo and use **Browse…** to insert a correctly-escaped absolute path.
@@ -119,4 +119,3 @@ sync.bat --config
 ## License
 
 MIT — see [LICENSE](LICENSE).
-

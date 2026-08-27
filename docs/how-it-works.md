@@ -32,16 +32,18 @@ Each repo runs in its own background `cmd` worker, in parallel. Before step 1 ea
 2. **stashing** — if the working tree is dirty, `git stash push -u`.
 3. **checkout master** — switch to the configured master branch (only if not already there).
 4. If `auto_merge: true`:
-   - **fetching upstream** — `git fetch upstream <master>`
-   - **fetching origin** — `git fetch origin <master>`
+   - **fetching upstream** — `git fetch --prune upstream <master>`
+   - **fetching origin** — `git fetch --prune origin <master>`
    - **merging** — `git merge --ff-only upstream/<master>`
    - **pushing** — `git push origin <master> --no-verify`
 5. If `auto_merge: false`:
-   - **pulling** — `git pull origin <master>`
+   - **pulling** — `git pull --prune origin <master>`
 6. **checkout original** — switch back to the branch you were on.
 7. **popping stash** — if step 2 stashed, `git stash pop` (skipped if step 6 failed).
 
 If any step fails, the repo's status becomes `FAILED (<reason>)` and its full log path is printed at the end. The temp folder containing logs is **kept on failure** so you can inspect it.
+
+Fetch and pull operations prune remote-tracking refs for branches that no longer exist on the corresponding remote. Pruning does not delete local branches. Repositories that take the already-up-to-date fast path skip pruning along with the rest of the sync.
 
 The `final_command` is run **sequentially after all workers finish**, from `working_dir` (or the shell's current directory if `working_dir` is empty).
 
