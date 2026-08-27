@@ -21,7 +21,7 @@ REM         and upstream/<master> already equal local.
 REM       - auto_merge=false: skip if origin/<master> equals local.
 REM     * If working tree is dirty -> auto-stash, sync, pop stash
 REM     * Switch to master branch
-REM     * Fetch upstream + origin
+REM     * Fetch upstream + origin, pruning stale remote-tracking refs
 REM     * If auto_merge=true: ff-merge upstream/master, push to origin
 REM       Else: pull from origin
 REM     * Switch back to the original working branch
@@ -653,7 +653,7 @@ if /I "!ORIGINAL_BRANCH!" NEQ "%MASTER_BRANCH%" (
 if not defined REPO_FAILED (
     if /I "%AUTO_MERGE%"=="true" (
         call :set_phase "fetching upstream"
-        git fetch upstream %MASTER_BRANCH% >> "%LOG%" 2>&1
+        git fetch --prune upstream %MASTER_BRANCH% >> "%LOG%" 2>&1
         if errorlevel 1 (
             set "REPO_FAILED=1"
             set "FAIL_REASON=git fetch upstream"
@@ -664,7 +664,7 @@ if not defined REPO_FAILED (
 if not defined REPO_FAILED (
     if /I "%AUTO_MERGE%"=="true" (
         call :set_phase "fetching origin"
-        git fetch origin %MASTER_BRANCH% >> "%LOG%" 2>&1
+        git fetch --prune origin %MASTER_BRANCH% >> "%LOG%" 2>&1
         if errorlevel 1 (
             set "REPO_FAILED=1"
             set "FAIL_REASON=git fetch origin"
@@ -689,7 +689,7 @@ if not defined REPO_FAILED (
         )
     ) else (
         call :set_phase "pulling"
-        git pull origin %MASTER_BRANCH% >> "%LOG%" 2>&1
+        git pull --prune origin %MASTER_BRANCH% >> "%LOG%" 2>&1
         if errorlevel 1 (
             set "REPO_FAILED=1"
             set "FAIL_REASON=git pull origin %MASTER_BRANCH%"

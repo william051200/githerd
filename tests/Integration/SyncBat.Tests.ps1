@@ -189,6 +189,9 @@ Describe 'sync.bat integration' -Tag 'Integration' {
         $firsts | Should -Not -Contain 'pull'
         # No stash on a clean tree
         $firsts | Should -Not -Contain 'stash'
+
+        ($r.GitCalls -join "`n") | Should -Match '\|fetch --prune upstream main(?:\r?\n|$)'
+        ($r.GitCalls -join "`n") | Should -Match '\|fetch --prune origin main(?:\r?\n|$)'
     }
 
     It 'pull mode: auto_merge=false runs git pull and skips fetch/merge/push' {
@@ -207,6 +210,7 @@ Describe 'sync.bat integration' -Tag 'Integration' {
         $firsts | Should -Not -Contain 'fetch'
         $firsts | Should -Not -Contain 'merge'
         $firsts | Should -Not -Contain 'push'
+        ($r.GitCalls -join "`n") | Should -Match '\|pull --prune origin main(?:\r?\n|$)'
     }
 
     It 'multiple repos all succeed' {
