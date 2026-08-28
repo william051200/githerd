@@ -13,7 +13,7 @@ The configuration UI (`sync.bat --config`) is built with **WPF + XAML**, hosted 
 |---|---|
 | [`ui/config-ui.ps1`](../ui/config-ui.ps1) | Host script. Loads the XAML, wires events, validates and writes `config.json`, returns the exit code `sync.bat` keys off. |
 | [`ui/MainWindow.xaml`](../ui/MainWindow.xaml) | Window layout: header → optional error banner → repo list + detail editor → post-sync command card → footer buttons. |
-| [`ui/Theme.xaml`](../ui/Theme.xaml) | Resource dictionary holding all design tokens (colors, radii, typography) plus templated styles for `Button`, `TextBox`, `CheckBox`, `ListBox`, and the card containers. |
+| [`ui/Theme.xaml`](../ui/Theme.xaml) | Resource dictionary holding all design tokens (colors, radii, typography) plus templated styles for buttons, text boxes, list boxes, and the card containers. |
 
 `Theme.xaml` is merged into the window's resources at runtime (`Window.Resources.MergedDictionaries.Add(theme)`). `MainWindow.xaml` therefore uses **`DynamicResource`** lookups, not `StaticResource`, so styles resolve after the merge.
 
@@ -53,13 +53,20 @@ If you have the licensed fonts installed, edit the `FontDisplay` / `FontBody` re
 The previous WinForms UI used a `DataGridView`. That control's cell-editor needs a double-click or F2 to enter edit mode, drops edits when focus shifts, and treats checkboxes awkwardly. The new UI is a **list + detail form**:
 
 * Left card — a `ListBox` of repos rendered as 3-line cards: name,
-  path, and a row of chip badges showing the master branch and an
-  `↺ auto-merge` (coral) / `pull only` (muted) indicator. So the merge
-  mode is visible at a glance — no need to click into the detail
-  panel to know what each repo is configured to do.
-* Right card — proper `TextBox` / `CheckBox` controls for the selected
-  repo. Edits push back to the list-bound view-model on every keystroke,
-  so the list label updates as you type.
+  path, and chip badges showing the branch, selected master remote, and
+  `auto-merge` / `pull only` mode.
+* Right card — proper `TextBox` controls, a themed **Master repo**
+  `ComboBox` populated from Git remotes, and a separate auto-merge
+  `CheckBox`. Edits push back to the list-bound view-model as they change.
+
+If remote discovery is unavailable, the selector retains the saved remote and
+adds `origin` as a fallback. This keeps imported and temporarily unavailable
+repositories editable without treating discovery as validation.
+
+The detail pane and repository list use narrow, rounded scroll thumbs instead
+of the default Windows scrollbar chrome. The remote dropdown uses the same
+cream surface, coral focus ring, rounded corners, and hover states as the
+existing text inputs.
 
 `+ Add repository` adds a new entry that shows *Untitled repository* in italic muted text until you give it a name; this avoids the "phantom blank row" feeling and the validator skips fully-empty entries on Save automatically. `Remove` drops the selected repo. Validation surfaces in a coral-tinted banner at the top of the window — never a `MessageBox` popup.
 

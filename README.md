@@ -58,8 +58,8 @@ GitHerd also pings GitHub at most **once per day after 12:00 PM Malaysia time** 
 {
     "working_dir": "C:\\code",
     "repos": [
-        { "name": "my-repo-a", "path": "my-repo-a",            "master": "main", "auto_merge": true  },
-        { "name": "my-repo-b", "path": "C:\\code\\my-repo-b",  "master": "main", "auto_merge": false }
+        { "name": "my-repo-a", "path": "my-repo-a",           "master": "main", "master_remote": "upstream", "auto_merge": true  },
+        { "name": "my-repo-b", "path": "C:\\code\\my-repo-b", "master": "main", "master_remote": "origin",   "auto_merge": false }
     ],
     "final_command": "",
     "max_wait_seconds": 600
@@ -72,7 +72,8 @@ GitHerd also pings GitHub at most **once per day after 12:00 PM Malaysia time** 
 | `name` | Friendly label / log file name. |
 | `path` | Absolute (`C:\code\repo`) or relative to `working_dir` (e.g. `my-repo-a`). |
 | `master` | The branch to sync (e.g. `main`, `master`, `dev`). |
-| `auto_merge` | `true` = fetch/prune upstream and origin + ff-merge + push origin. `false` = pull/prune origin. |
+| `master_remote` | Remote that owns the latest code. The GUI discovers choices from the local repository. |
+| `auto_merge` | `true` = fetch/prune and ff-merge from `master_remote`, then push origin. `false` = pull/prune from `master_remote`. |
 | `final_command` | Optional command to run once after all repos finish (`""` to skip). |
 
 > Tip: in the GUI, select a repo and use **Browse…** to insert a correctly-escaped absolute path.

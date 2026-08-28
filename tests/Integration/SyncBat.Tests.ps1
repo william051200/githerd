@@ -213,6 +213,34 @@ Describe 'sync.bat integration' -Tag 'Integration' {
         ($r.GitCalls -join "`n") | Should -Match '\|pull --prune origin main(?:\r?\n|$)'
     }
 
+    It 'pull mode uses the configured non-origin remote' {
+        New-FakeRepo -Name 'repoUpstream' | Out-Null
+        Write-Config -Repos @(
+            @{ name = 'repoUpstream'; path = 'repoUpstream'; master = 'main'; auto_merge = $false; master_remote = 'upstream' }
+        )
+
+        $r = Invoke-Sync
+
+        $r.ExitCode | Should -Be 0
+        $r.Stdout | Should -Match 'repoUpstream\s+::\s+OK'
+        ($r.GitCalls -join "`n") | Should -Match '\|pull --prune upstream main(?:\r?\n|$)'
+        ($r.GitCalls -join "`n") | Should -Not -Match '\|pull --prune origin main(?:\r?\n|$)'
+    }
+
+    It 'auto-merge uses the selected master remote as its source' {
+        New-FakeRepo -Name 'repoOriginMaster' | Out-Null
+        Write-Config -Repos @(
+            @{ name = 'repoOriginMaster'; path = 'repoOriginMaster'; master = 'main'; auto_merge = $true; master_remote = 'origin' }
+        )
+
+        $r = Invoke-Sync
+
+        $r.ExitCode | Should -Be 0
+        ($r.GitCalls -join "`n") | Should -Match '\|fetch --prune origin main(?:\r?\n|$)'
+        ($r.GitCalls -join "`n") | Should -Match '\|merge --ff-only origin/main(?:\r?\n|$)'
+        ($r.GitCalls -join "`n") | Should -Not -Match '\|fetch --prune upstream main(?:\r?\n|$)'
+    }
+
     It 'multiple repos all succeed' {
         New-FakeRepo -Name 'r1' | Out-Null
         New-FakeRepo -Name 'r2' | Out-Null
@@ -394,6 +422,24 @@ exit /b 0
             ForEach-Object { ($_ -split ' ')[1] }
         $lsRemoteRemotes | Should -Contain 'origin'
         $lsRemoteRemotes | Should -Not -Contain 'upstream'
+    }
+
+    It 'fast-path: pull mode probes the configured non-origin remote' {
+        New-FakeRepo -Name 'uptodateUpstream' | Out-Null
+        Write-Config -Repos @(
+            @{ name = 'uptodateUpstream'; path = 'uptodateUpstream'; master = 'main'; auto_merge = $false; master_remote = 'upstream' }
+        )
+
+        $r = Invoke-Sync -EnvVars @{
+            FAKEGIT_LOCAL_SHA    = 'abababababababababababababababababababab'
+            FAKEGIT_UPSTREAM_SHA = 'abababababababababababababababababababab'
+        }
+
+        $r.ExitCode | Should -Be 0
+        $r.Stdout | Should -Match 'uptodateUpstream\s+::\s+OK \(already up to date\)'
+        ($r.GitCalls -join "`n") | Should -Match '\|ls-remote upstream main(?:\r?\n|$)'
+        ($r.GitCalls -join "`n") | Should -Not -Match '\|ls-remote origin main(?:\r?\n|$)'
+        ($r.GitCalls -join "`n") | Should -Not -Match '\|pull '
     }
 
     It 'fast-path: falls through to full sync when origin SHA differs' {

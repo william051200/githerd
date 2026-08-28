@@ -16,6 +16,7 @@
       repos[N].path
       repos[N].master
       repos[N].auto_merge   (true|false)
+      repos[N].master_remote
       repo_count
       repo_max_index
       WORKING_DIR
@@ -57,18 +58,33 @@ for ($i = 0; $i -lt $repos.Count; $i++) {
     $path   = [string]$r.path
     $master = [string]$r.master
     $auto   = if ($r.auto_merge) { 'true' } else { 'false' }
+    $masterRemote = if ($r.auto_merge) { 'upstream' } else { 'origin' }
+    if ($r.PSObject.Properties.Match('master_remote').Count -gt 0 -and
+        -not [string]::IsNullOrWhiteSpace([string]$r.master_remote)) {
+        $masterRemote = [string]$r.master_remote
+    } elseif (-not $r.auto_merge -and
+              $r.PSObject.Properties.Match('pull_remote').Count -gt 0 -and
+              -not [string]::IsNullOrWhiteSpace([string]$r.pull_remote)) {
+        # Compatibility with configs written by the short-lived pull_remote schema.
+        $masterRemote = [string]$r.pull_remote
+    }
 
-    foreach ($v in @($name, $path, $master)) {
+    foreach ($v in @($name, $path, $master, $masterRemote)) {
         if ($v -match '"') {
             Write-Error "repos[$i] field contains a double-quote, which is not supported."
             exit 1
         }
+    }
+    if ($masterRemote.StartsWith('-') -or $masterRemote -match '[\s"&|<>^%!()]') {
+        Write-Error "repos[$i].master_remote contains characters that are unsafe for CMD."
+        exit 1
     }
 
     $lines.Add("set `"repos[$i].name=$name`"")
     $lines.Add("set `"repos[$i].path=$path`"")
     $lines.Add("set `"repos[$i].master=$master`"")
     $lines.Add("set `"repos[$i].auto_merge=$auto`"")
+    $lines.Add("set `"repos[$i].master_remote=$masterRemote`"")
 }
 
 $count = $repos.Count

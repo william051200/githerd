@@ -190,11 +190,14 @@ public class GitherdRepoVM : DependencyObject {
         DependencyProperty.Register("master", typeof(string), typeof(GitherdRepoVM));
     public static readonly DependencyProperty AutoMergeProperty =
         DependencyProperty.Register("auto_merge", typeof(bool), typeof(GitherdRepoVM));
+    public static readonly DependencyProperty MasterRemoteProperty =
+        DependencyProperty.Register("master_remote", typeof(string), typeof(GitherdRepoVM));
 
     public string name       { get { return (string)GetValue(NameProperty); }   set { SetValue(NameProperty, value); } }
     public string path       { get { return (string)GetValue(PathProperty); }   set { SetValue(PathProperty, value); } }
     public string master     { get { return (string)GetValue(MasterProperty); } set { SetValue(MasterProperty, value); } }
     public bool   auto_merge { get { return (bool)GetValue(AutoMergeProperty); } set { SetValue(AutoMergeProperty, value); } }
+    public string master_remote { get { return (string)GetValue(MasterRemoteProperty); } set { SetValue(MasterRemoteProperty, value); } }
 }
 '@
 }
@@ -210,6 +213,16 @@ function New-RepoVM {
         $auto = [bool]$Source.auto_merge
     }
     $vm.auto_merge = $auto
+    $masterRemote = if ($auto) { 'upstream' } else { 'origin' }
+    if ($Source -and $Source.PSObject.Properties.Match('master_remote').Count -gt 0 -and
+        -not [string]::IsNullOrWhiteSpace([string]$Source.master_remote)) {
+        $masterRemote = [string]$Source.master_remote
+    } elseif (-not $auto -and $Source -and
+              $Source.PSObject.Properties.Match('pull_remote').Count -gt 0 -and
+              -not [string]::IsNullOrWhiteSpace([string]$Source.pull_remote)) {
+        $masterRemote = [string]$Source.pull_remote
+    }
+    $vm.master_remote = $masterRemote
     return $vm
 }
 
@@ -234,7 +247,7 @@ foreach ($n in 'ErrorBox','ErrorText','BtnDismissBanner','RepoList','RepoCount',
                 'UpdateBanner','UpdateBannerText','BtnWhatsNew','BtnUpdateNow','BtnDismissUpdate',
                 'TxtWorkingDir','BtnBrowseWorkingDir',
                 'DetailPanel','EmptyState','TxtName','TxtPath','BtnBrowse','TxtMaster',
-                'ChkAutoMerge','TxtFinal','TxtTimeout','BtnCancel','BtnSave','BtnSaveRun') {
+                'CmbMasterRemote','ChkAutoMerge','TxtFinal','TxtTimeout','BtnCancel','BtnSave','BtnSaveRun') {
     $ctl[$n] = $window.FindName($n)
 }
 
@@ -320,17 +333,23 @@ function Bind-Detail {
         $ctl.DetailPanel.Visibility = 'Collapsed'
         $ctl.EmptyState.Visibility  = 'Visible'
         $ctl.TxtName.Text = ''; $ctl.TxtPath.Text = ''; $ctl.TxtMaster.Text = ''
+        $ctl.CmbMasterRemote.Items.Clear()
+        $ctl.CmbMasterRemote.IsEnabled = $false
         $ctl.ChkAutoMerge.IsChecked = $false
+        $ctl.ChkAutoMerge.IsEnabled = $false
     } else {
         $ctl.DetailPanel.Visibility = 'Visible'
         $ctl.EmptyState.Visibility  = 'Collapsed'
         $ctl.TxtName.Text   = [string]$Vm.name
         $ctl.TxtPath.Text   = [string]$Vm.path
         $ctl.TxtMaster.Text = [string]$Vm.master
+        $ctl.CmbMasterRemote.IsEnabled = $true
+        $ctl.ChkAutoMerge.IsEnabled = $true
         $ctl.ChkAutoMerge.IsChecked = [bool]$Vm.auto_merge
     }
     $script:current = $Vm
     $script:suppressDetailWrite = $false
+    if ($null -ne $Vm) { Refresh-MasterRemoteOptions }
 }
 
 function Push-Detail-To-Vm {
@@ -338,6 +357,8 @@ function Push-Detail-To-Vm {
     $script:current.name       = $ctl.TxtName.Text
     $script:current.path       = $ctl.TxtPath.Text
     $script:current.master     = $ctl.TxtMaster.Text
+    $selection = [string]$ctl.CmbMasterRemote.SelectedItem
+    if ($selection) { $script:current.master_remote = $selection }
     $script:current.auto_merge = [bool]$ctl.ChkAutoMerge.IsChecked
 }
 
@@ -347,9 +368,13 @@ $ctl.RepoList.Add_SelectionChanged({
 })
 
 $ctl.TxtName.Add_TextChanged({   Push-Detail-To-Vm })
-$ctl.TxtPath.Add_TextChanged({   Push-Detail-To-Vm })
+$ctl.TxtPath.Add_TextChanged({
+    Push-Detail-To-Vm
+    Refresh-MasterRemoteOptions
+})
 $ctl.TxtMaster.Add_TextChanged({ Push-Detail-To-Vm })
-$ctl.ChkAutoMerge.Add_Click({    Push-Detail-To-Vm })
+$ctl.CmbMasterRemote.Add_SelectionChanged({ Push-Detail-To-Vm })
+$ctl.ChkAutoMerge.Add_Click({ Push-Detail-To-Vm })
 
 $ctl.BtnAdd.Add_Click({
     $vm = New-RepoVM -Source $null
@@ -424,6 +449,47 @@ function Resolve-RepoPath {
     if (-not $wd) { return $RepoPath }
     return (Join-Path $wd $RepoPath)
 }
+
+function Get-RepoRemotes {
+    param([string]$RepoPath)
+    $resolved = Resolve-RepoPath $RepoPath
+    if (-not $resolved -or -not (Test-Path -LiteralPath $resolved -PathType Container)) {
+        return @()
+    }
+
+    try {
+        $output = @(& git -C $resolved remote 2>$null)
+        if ($LASTEXITCODE -ne 0) { return @() }
+        return @($output | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ })
+    } catch {
+        return @()
+    }
+}
+
+function Refresh-MasterRemoteOptions {
+    if ($script:suppressDetailWrite -or $null -eq $script:current) { return }
+
+    $selected = [string]$script:current.master_remote
+    if ([string]::IsNullOrWhiteSpace($selected)) { $selected = 'origin' }
+
+    $options = New-Object System.Collections.Generic.List[string]
+    foreach ($remote in @((@(Get-RepoRemotes ([string]$script:current.path))) + @($selected, 'origin'))) {
+        if ($remote -and -not $options.Contains([string]$remote)) {
+            $options.Add([string]$remote)
+        }
+    }
+
+    $script:suppressDetailWrite = $true
+    try {
+        $ctl.CmbMasterRemote.Items.Clear()
+        foreach ($option in $options) { [void]$ctl.CmbMasterRemote.Items.Add($option) }
+        $ctl.CmbMasterRemote.SelectedItem = $selected
+    } finally {
+        $script:suppressDetailWrite = $false
+    }
+}
+
+$ctl.TxtWorkingDir.Add_TextChanged({ Refresh-MasterRemoteOptions })
 
 function Try-Relativize-Under-WorkingDir {
     # If $Selected lives under the working dir, return the path relative to it
@@ -763,12 +829,18 @@ function Validate-And-Build {
         $key = $name.ToLowerInvariant()
         if ($names.ContainsKey($key)) { throw "Duplicate repository name: '$name'." }
         $names[$key] = $true
+        $masterRemote = ([string]$vm.master_remote).Trim()
+        if (-not $masterRemote) { $masterRemote = if ($vm.auto_merge) { 'upstream' } else { 'origin' } }
+        if ($masterRemote.StartsWith('-') -or $masterRemote -match '[\s"&|<>^%!()]') {
+            throw "Repo '$name': Master repo '$masterRemote' contains characters that are unsafe for CMD."
+        }
 
         $repos += [pscustomobject]@{
             name       = $name
             path       = $path
             master     = $master
             auto_merge = [bool]$vm.auto_merge
+            master_remote = $masterRemote
         }
     }
     if ($repos.Count -eq 0) { throw 'Add at least one repository.' }
