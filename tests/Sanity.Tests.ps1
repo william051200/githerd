@@ -21,4 +21,18 @@ Describe 'Repository sanity' {
         $v | Should -Not -BeNullOrEmpty
         $v | Should -Match '^\d+\.\d+\.\d+'
     }
+
+    It 'wires separate master-remote and auto-merge controls' {
+        $xaml = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'ui\MainWindow.xaml') -Raw
+        $ui = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'ui\config-ui.ps1') -Raw
+        $theme = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'ui\Theme.xaml') -Raw
+
+        $xaml | Should -Match 'x:Name="CmbMasterRemote"'
+        $xaml | Should -Match 'x:Name="ChkAutoMerge"'
+        $ui | Should -Match 'function Get-RepoRemotes'
+        $ui | Should -Match '@\(Get-RepoRemotes'
+        $ui | Should -Match 'master_remote'
+        $theme | Should -Match 'x:Key="ComboBoxStyle"'
+        $theme | Should -Match 'x:Key="ThinScrollViewer"'
+    }
 }

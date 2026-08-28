@@ -5,13 +5,15 @@
             "name": "my-repo-a",
             "path": "my-repo-a",
             "master": "main",
-            "auto_merge": true
+            "auto_merge": true,
+            "master_remote": "upstream"
         },
         {
             "name": "my-repo-b",
             "path": "C:\\code\\my-repo-b",
             "master": "main",
-            "auto_merge": false
+            "auto_merge": false,
+            "master_remote": "origin"
         }
     ],
     "final_command": "",

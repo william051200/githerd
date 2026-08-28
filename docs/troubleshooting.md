@@ -10,4 +10,5 @@
 | Stash kept after a failure | If the worker couldn't return to your original branch, it deliberately does **not** pop the stash. Resolve the branch state manually, then `git stash pop`. |
 | No progress bars / weird `^[[2K` characters in the console | Your console doesn't support ANSI escape sequences. Use Windows Terminal or a recent `cmd.exe`. |
 | UI's "Add Repo" button does nothing | You're on a very old PowerShell that mishandled the strongly-typed array cast in `Columns.AddRange`. Make sure you're on PowerShell 5+ (default on Windows 10/11). |
-| `git push` fails for a repo with `auto_merge: true` | You don't have push access to that repo's `origin`, or `--no-verify` isn't enough to bypass a hook. Either flip the repo to `auto_merge: false` (pull-only) or fix the upstream rights. |
+| `git push` fails for a repo with `auto_merge: true` | You don't have push access to that repo's `origin`, or `--no-verify` isn't enough to bypass a hook. Turn off auto-merge to use pull-only mode, or fix the origin rights. |
+| Sync uses the wrong source repository | Open the configuration UI and select the authoritative **Master repo** remote. Choices come from `git remote`; legacy auto-merge configs default to `upstream` and pull-only configs default to `origin`. |

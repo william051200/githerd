@@ -17,13 +17,13 @@ REM       master SHA already matches every required remote SHA,
 REM       skip the rest of the sync entirely (no stash, no
 REM       checkout, no fetch, no merge, no pull, no push).
 REM       - auto_merge=true: skip only if BOTH origin/<master>
-REM         and upstream/<master> already equal local.
-REM       - auto_merge=false: skip if origin/<master> equals local.
+REM         and master_remote/<master> already equal local.
+REM       - auto_merge=false: skip if master_remote/<master> equals local.
 REM     * If working tree is dirty -> auto-stash, sync, pop stash
 REM     * Switch to master branch
-REM     * Fetch upstream + origin, pruning stale remote-tracking refs
-REM     * If auto_merge=true: ff-merge upstream/master, push to origin
-REM       Else: pull from origin
+REM     * If auto_merge=true: fetch the selected master remote and origin,
+REM       ff-merge master_remote/master, then push to origin
+REM       Else: pull from the selected master remote
 REM     * Switch back to the original working branch
 REM     * Pop stash (only if branch was successfully restored)
 REM
@@ -551,6 +551,14 @@ set "NAME=!repos[%IDX%].name!"
 set "PATHDIR=!repos[%IDX%].path!"
 set "MASTER_BRANCH=!repos[%IDX%].master!"
 set "AUTO_MERGE=!repos[%IDX%].auto_merge!"
+set "MASTER_REMOTE=!repos[%IDX%].master_remote!"
+if not defined MASTER_REMOTE (
+    if /I "!AUTO_MERGE!"=="true" (
+        set "MASTER_REMOTE=upstream"
+    ) else (
+        set "MASTER_REMOTE=origin"
+    )
+)
 
 REM Resolve effective directory by combining WORKING_DIR with the configured path.
 REM Absolute paths (X:..., \..., /...) are used as-is.
@@ -561,7 +569,7 @@ set "STATUS_FILE=%TMPD%\%NAME%.status"
 set "DONE_FILE=%TMPD%\%NAME%.done"
 
 > "%LOG%"  echo === Worker for %NAME% (%DATE% %TIME%) ===
->> "%LOG%" echo path=%PATHDIR%  resolved=!EFFECTIVE_DIR!  master=%MASTER_BRANCH%  auto_merge=%AUTO_MERGE%
+>> "%LOG%" echo path=%PATHDIR%  resolved=!EFFECTIVE_DIR!  master=%MASTER_BRANCH%  master_remote=!MASTER_REMOTE!  auto_merge=%AUTO_MERGE%
 
 call :set_phase starting
 
@@ -593,22 +601,22 @@ set "LOCAL_SHA="
 for /f "delims=" %%S in ('git rev-parse %MASTER_BRANCH% 2^>nul') do set "LOCAL_SHA=%%S"
 if not defined LOCAL_SHA goto :probe_done
 
-set "ORIGIN_REMOTE_SHA="
-for /f "tokens=1" %%S in ('git ls-remote origin %MASTER_BRANCH% 2^>nul') do set "ORIGIN_REMOTE_SHA=%%S"
-if not defined ORIGIN_REMOTE_SHA (
-    >> "%LOG%" echo [INFO] ls-remote origin failed or returned no ref; falling through to full sync.
+set "MASTER_REMOTE_SHA="
+for /f "tokens=1" %%S in ('git ls-remote %MASTER_REMOTE% %MASTER_BRANCH% 2^>nul') do set "MASTER_REMOTE_SHA=%%S"
+if not defined MASTER_REMOTE_SHA (
+    >> "%LOG%" echo [INFO] ls-remote %MASTER_REMOTE% failed or returned no ref; falling through to full sync.
     goto :probe_done
 )
-if /I "!ORIGIN_REMOTE_SHA!" NEQ "!LOCAL_SHA!" goto :probe_done
+if /I "!MASTER_REMOTE_SHA!" NEQ "!LOCAL_SHA!" goto :probe_done
 
-if /I "%AUTO_MERGE%"=="true" (
-    set "UPSTREAM_REMOTE_SHA="
-    for /f "tokens=1" %%S in ('git ls-remote upstream %MASTER_BRANCH% 2^>nul') do set "UPSTREAM_REMOTE_SHA=%%S"
-    if not defined UPSTREAM_REMOTE_SHA (
-        >> "%LOG%" echo [INFO] ls-remote upstream failed or returned no ref; falling through to full sync.
+if /I "%AUTO_MERGE%"=="true" if /I not "%MASTER_REMOTE%"=="origin" (
+    set "ORIGIN_REMOTE_SHA="
+    for /f "tokens=1" %%S in ('git ls-remote origin %MASTER_BRANCH% 2^>nul') do set "ORIGIN_REMOTE_SHA=%%S"
+    if not defined ORIGIN_REMOTE_SHA (
+        >> "%LOG%" echo [INFO] ls-remote origin failed or returned no ref; falling through to full sync.
         goto :probe_done
     )
-    if /I "!UPSTREAM_REMOTE_SHA!" NEQ "!LOCAL_SHA!" goto :probe_done
+    if /I "!ORIGIN_REMOTE_SHA!" NEQ "!LOCAL_SHA!" goto :probe_done
 )
 
 >> "%LOG%" echo [INFO] Remote already up to date (local=!LOCAL_SHA!); skipping fetch/merge/pull.
@@ -652,17 +660,17 @@ if /I "!ORIGINAL_BRANCH!" NEQ "%MASTER_BRANCH%" (
 
 if not defined REPO_FAILED (
     if /I "%AUTO_MERGE%"=="true" (
-        call :set_phase "fetching upstream"
-        git fetch --prune upstream %MASTER_BRANCH% >> "%LOG%" 2>&1
+        call :set_phase "fetching %MASTER_REMOTE%"
+        git fetch --prune %MASTER_REMOTE% %MASTER_BRANCH% >> "%LOG%" 2>&1
         if errorlevel 1 (
             set "REPO_FAILED=1"
-            set "FAIL_REASON=git fetch upstream"
+            set "FAIL_REASON=git fetch %MASTER_REMOTE%"
         )
     )
 )
 
 if not defined REPO_FAILED (
-    if /I "%AUTO_MERGE%"=="true" (
+    if /I "%AUTO_MERGE%"=="true" if /I not "%MASTER_REMOTE%"=="origin" (
         call :set_phase "fetching origin"
         git fetch --prune origin %MASTER_BRANCH% >> "%LOG%" 2>&1
         if errorlevel 1 (
@@ -675,7 +683,7 @@ if not defined REPO_FAILED (
 if not defined REPO_FAILED (
     if /I "%AUTO_MERGE%"=="true" (
         call :set_phase "merging"
-        git merge --ff-only upstream/%MASTER_BRANCH% >> "%LOG%" 2>&1
+        git merge --ff-only %MASTER_REMOTE%/%MASTER_BRANCH% >> "%LOG%" 2>&1
         if errorlevel 1 (
             set "REPO_FAILED=1"
             set "FAIL_REASON=git merge --ff-only"
@@ -688,11 +696,11 @@ if not defined REPO_FAILED (
             )
         )
     ) else (
-        call :set_phase "pulling"
-        git pull --prune origin %MASTER_BRANCH% >> "%LOG%" 2>&1
+        call :set_phase "pulling %MASTER_REMOTE%"
+        git pull --prune %MASTER_REMOTE% %MASTER_BRANCH% >> "%LOG%" 2>&1
         if errorlevel 1 (
             set "REPO_FAILED=1"
-            set "FAIL_REASON=git pull origin %MASTER_BRANCH%"
+            set "FAIL_REASON=git pull %MASTER_REMOTE% %MASTER_BRANCH%"
         )
     )
 )

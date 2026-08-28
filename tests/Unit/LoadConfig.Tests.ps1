@@ -45,8 +45,8 @@ BeforeAll {
         [pscustomobject]@{
             working_dir      = 'C:\code'
             repos            = @(
-                [pscustomobject]@{ name='repo-a'; path='repo-a';            master='main';   auto_merge=$true  }
-                [pscustomobject]@{ name='repo-b'; path='C:\code\repo-b';    master='master'; auto_merge=$false }
+                [pscustomobject]@{ name='repo-a'; path='repo-a';            master='main';   auto_merge=$true;  master_remote='upstream' }
+                [pscustomobject]@{ name='repo-b'; path='C:\code\repo-b';    master='master'; auto_merge=$false; master_remote='origin'   }
             )
             final_command    = 'echo done'
             max_wait_seconds = 300
@@ -75,8 +75,10 @@ Describe 'lib/load-config.ps1' {
             $out | Should -Match 'set "repos\[0\].path=repo-a"'
             $out | Should -Match 'set "repos\[0\].master=main"'
             $out | Should -Match 'set "repos\[0\].auto_merge=true"'
+            $out | Should -Match 'set "repos\[0\].master_remote=upstream"'
             $out | Should -Match 'set "repos\[1\].name=repo-b"'
             $out | Should -Match 'set "repos\[1\].auto_merge=false"'
+            $out | Should -Match 'set "repos\[1\].master_remote=origin"'
             $out | Should -Match 'set /a repo_count=2'
             $out | Should -Match 'set /a repo_max_index=1'
             $out | Should -Match 'set "WORKING_DIR=C:\\code"'
@@ -123,6 +125,45 @@ Describe 'lib/load-config.ps1' {
             (Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath).ExitCode | Should -Be 0
             (Get-Content -LiteralPath $script:OutPath -Raw) | Should -Match 'set "repos\[0\].auto_merge=false"'
         }
+
+        It 'defaults missing master_remote by mode to preserve legacy behavior' {
+            $cfg = [pscustomobject]@{
+                repos = @(
+                    [pscustomobject]@{ name='merge'; path='merge'; master='main'; auto_merge=$true }
+                    [pscustomobject]@{ name='pull';  path='pull';  master='main'; auto_merge=$false }
+                )
+                final_command = ''
+            }
+            Write-Config -Path $script:CfgPath -Object $cfg
+
+            (Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath).ExitCode | Should -Be 0
+            $out = Get-Content -LiteralPath $script:OutPath -Raw
+            $out | Should -Match 'set "repos\[0\].master_remote=upstream"'
+            $out | Should -Match 'set "repos\[1\].master_remote=origin"'
+        }
+
+        It 'migrates pull_remote for pull-only configs' {
+            $cfg = [pscustomobject]@{
+                repos         = @([pscustomobject]@{ name='r'; path='r'; master='main'; auto_merge=$false; pull_remote='team' })
+                final_command = ''
+            }
+            Write-Config -Path $script:CfgPath -Object $cfg
+
+            (Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath).ExitCode | Should -Be 0
+            (Get-Content -LiteralPath $script:OutPath -Raw) | Should -Match 'set "repos\[0\].master_remote=team"'
+        }
+
+        It 'accepts valid remote names containing at-signs and plus signs' {
+            $cfg = New-MinimalConfig
+            $cfg.repos[0].master_remote = 'work@github'
+            $cfg.repos[1].master_remote = 'team+mirror'
+            Write-Config -Path $script:CfgPath -Object $cfg
+
+            (Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath).ExitCode | Should -Be 0
+            $out = Get-Content -LiteralPath $script:OutPath -Raw
+            $out | Should -Match 'set "repos\[0\].master_remote=work@github"'
+            $out | Should -Match 'set "repos\[1\].master_remote=team\+mirror"'
+        }
     }
 
     Context 'validation failures' {
@@ -156,6 +197,15 @@ Describe 'lib/load-config.ps1' {
             $r = Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath
             $r.ExitCode | Should -Not -Be 0
             $r.StdErr   | Should -Match 'double-quote'
+        }
+
+        It 'rejects CMD metacharacters in master_remote' {
+            $cfg = New-MinimalConfig
+            $cfg.repos[1].master_remote = 'bad&remote'
+            Write-Config -Path $script:CfgPath -Object $cfg
+            $r = Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath
+            $r.ExitCode | Should -Not -Be 0
+            $r.StdErr   | Should -Match 'master_remote contains characters that are unsafe\s+for CMD'
         }
 
         It 'rejects a double-quote in working_dir' {

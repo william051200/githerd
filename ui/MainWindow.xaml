@@ -200,13 +200,20 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
                                         <Border Style="{DynamicResource BadgePill}">
                                             <TextBlock Style="{DynamicResource BadgeTextMuted}">
+                                                <Run Text="master:&#160;" />
+                                                <Run Text="{Binding master_remote}" FontWeight="SemiBold"
+                                                     Foreground="{DynamicResource Ink}" />
+                                            </TextBlock>
+                                        </Border>
+
+                                        <Border Style="{DynamicResource BadgePill}">
+                                            <TextBlock Style="{DynamicResource BadgeTextMuted}">
                                                 <Run Text="branch:&#160;" />
                                                 <Run Text="{Binding master}" FontWeight="SemiBold"
                                                      Foreground="{DynamicResource Ink}" />
                                             </TextBlock>
                                         </Border>
 
-                                        <!-- auto-merge badge: coral when on, muted when off -->
                                         <Border>
                                             <Border.Style>
                                                 <Style TargetType="Border">
@@ -232,7 +239,7 @@
                                                         <Setter Property="Text"       Value="pull only" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding auto_merge}" Value="True">
-                                                                <Setter Property="Text"       Value="↺ auto-merge" />
+                                                                <Setter Property="Text" Value="auto-merge" />
                                                                 <Setter Property="Foreground" Value="{DynamicResource PrimaryActive}" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
@@ -293,10 +300,13 @@
                 </Border>
 
                 <Border Grid.Row="1" Style="{DynamicResource CardSoft}" Margin="0,14,0,0">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                    <ScrollViewer Style="{DynamicResource ThinScrollViewer}"
+                                  VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
                         <Grid x:Name="DetailPanel">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -328,14 +338,24 @@
                         <TextBlock Grid.Row="5" Style="{DynamicResource Hint}" Margin="0,4,0,0"
                                    Text="Absolute path, or a name/relative path under the working directory above." />
 
-                        <TextBlock Grid.Row="6" Text="Master branch" Style="{DynamicResource FieldLabel}" Margin="0,12,0,4" />
-                        <TextBox  x:Name="TxtMaster" Grid.Row="7" Style="{DynamicResource TextBoxStyle}"
+                        <TextBlock Grid.Row="6" Text="Master repo"
+                                   Style="{DynamicResource FieldLabel}" Margin="0,12,0,4" />
+                        <ComboBox x:Name="CmbMasterRemote" Grid.Row="7"
+                                  Style="{DynamicResource ComboBoxStyle}"
+                                  ToolTip="Choose the remote that owns the latest code." />
+                        <TextBlock Grid.Row="8" Style="{DynamicResource Hint}" Margin="0,4,0,0"
+                                   Text="Available remotes are discovered from this repository." />
+
+                        <TextBlock Grid.Row="9" Text="Master branch"
+                                   Style="{DynamicResource FieldLabel}" Margin="0,12,0,4" />
+                        <TextBox x:Name="TxtMaster" Grid.Row="10"
+                                 Style="{DynamicResource TextBoxStyle}"
                                  VerticalAlignment="Top" />
 
-                        <CheckBox x:Name="ChkAutoMerge" Grid.Row="8"
+                        <CheckBox x:Name="ChkAutoMerge" Grid.Row="11"
                                   Style="{DynamicResource CheckBoxStyle}"
-                                  Content="Auto-merge upstream/master into the working branch"
-                                  Margin="0,14,0,0" />
+                                  Content="Auto-merge latest code into the configured master branch"
+                                  Margin="0,12,0,0" />
                         </Grid>
                     </ScrollViewer>
                 </Border>
