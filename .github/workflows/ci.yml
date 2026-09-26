@@ -11,6 +11,18 @@ permissions:
   contents: read
 
 jobs:
+  config-version-layout:
+    name: Config version layout
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate config version naming
+        shell: pwsh
+        run: |
+          .\tests\Validate-ConfigVersionLayout.ps1
+
   test:
     name: Pester (${{ matrix.shell }})
     runs-on: windows-latest

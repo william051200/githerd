@@ -1,0 +1,15 @@
+{
+  "config_version": 1,
+  "working_dir": "C:\\code",
+  "repos": [
+    {
+      "name": "repo-a",
+      "path": "C:\\Users\\example\\source\\repo-a",
+      "master_remote": "upstream",
+      "master": "main",
+      "auto_merge": true
+    }
+  ],
+  "final_command": "echo done",
+  "max_wait_seconds": 600
+}

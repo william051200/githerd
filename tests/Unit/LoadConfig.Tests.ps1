@@ -43,6 +43,7 @@ BeforeAll {
 
     function New-MinimalConfig {
         [pscustomobject]@{
+            config_version   = 1
             working_dir      = 'C:\code'
             repos            = @(
                 [pscustomobject]@{ name='repo-a'; path='repo-a';            master='main';   auto_merge=$true;  master_remote='upstream' }
@@ -96,63 +97,7 @@ Describe 'lib/load-config.ps1' {
         }
     }
 
-    Context 'defaults and optional fields' {
-        It 'defaults max_wait_seconds to 600 when omitted' {
-            $cfg = New-MinimalConfig
-            $cfg.PSObject.Properties.Remove('max_wait_seconds')
-            Write-Config -Path $script:CfgPath -Object $cfg
-
-            (Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath).ExitCode | Should -Be 0
-            (Get-Content -LiteralPath $script:OutPath -Raw) | Should -Match 'set /a MAX_WAIT=600'
-        }
-
-        It 'emits empty WORKING_DIR when working_dir is missing' {
-            $cfg = New-MinimalConfig
-            $cfg.PSObject.Properties.Remove('working_dir')
-            Write-Config -Path $script:CfgPath -Object $cfg
-
-            (Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath).ExitCode | Should -Be 0
-            (Get-Content -LiteralPath $script:OutPath -Raw) | Should -Match 'set "WORKING_DIR="'
-        }
-
-        It 'treats missing auto_merge as false' {
-            $cfg = [pscustomobject]@{
-                repos         = @([pscustomobject]@{ name='r'; path='r'; master='main' })
-                final_command = ''
-            }
-            Write-Config -Path $script:CfgPath -Object $cfg
-
-            (Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath).ExitCode | Should -Be 0
-            (Get-Content -LiteralPath $script:OutPath -Raw) | Should -Match 'set "repos\[0\].auto_merge=false"'
-        }
-
-        It 'defaults missing master_remote by mode to preserve legacy behavior' {
-            $cfg = [pscustomobject]@{
-                repos = @(
-                    [pscustomobject]@{ name='merge'; path='merge'; master='main'; auto_merge=$true }
-                    [pscustomobject]@{ name='pull';  path='pull';  master='main'; auto_merge=$false }
-                )
-                final_command = ''
-            }
-            Write-Config -Path $script:CfgPath -Object $cfg
-
-            (Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath).ExitCode | Should -Be 0
-            $out = Get-Content -LiteralPath $script:OutPath -Raw
-            $out | Should -Match 'set "repos\[0\].master_remote=upstream"'
-            $out | Should -Match 'set "repos\[1\].master_remote=origin"'
-        }
-
-        It 'migrates pull_remote for pull-only configs' {
-            $cfg = [pscustomobject]@{
-                repos         = @([pscustomobject]@{ name='r'; path='r'; master='main'; auto_merge=$false; pull_remote='team' })
-                final_command = ''
-            }
-            Write-Config -Path $script:CfgPath -Object $cfg
-
-            (Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath).ExitCode | Should -Be 0
-            (Get-Content -LiteralPath $script:OutPath -Raw) | Should -Match 'set "repos\[0\].master_remote=team"'
-        }
-
+    Context 'current-schema values' {
         It 'accepts valid remote names containing at-signs and plus signs' {
             $cfg = New-MinimalConfig
             $cfg.repos[0].master_remote = 'work@github'
@@ -172,26 +117,32 @@ Describe 'lib/load-config.ps1' {
             $r = Invoke-Loader -ConfigPath $missing -OutPath $script:OutPath
             $r.ExitCode | Should -Not -Be 0
             $r.StdErr   | Should -Match 'Config file not found'
+            $r.StdErr   | Should -Not -Match 'CategoryInfo|FullyQualifiedErrorId'
         }
 
         It 'exits non-zero on invalid JSON' {
             [System.IO.File]::WriteAllText($script:CfgPath, '{ not json', [System.Text.UTF8Encoding]::new($false))
             $r = Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath
             $r.ExitCode | Should -Not -Be 0
-            $r.StdErr   | Should -Match 'Failed to parse JSON'
+            $r.StdErr   | Should -Match 'Failed to parse JSON config'
         }
 
         It 'exits non-zero when repos array is empty' {
-            Write-Config -Path $script:CfgPath -Object ([pscustomobject]@{ repos=@(); final_command='' })
+            $cfg = New-MinimalConfig
+            $cfg.repos = @()
+            Write-Config -Path $script:CfgPath -Object $cfg
             $r = Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath
             $r.ExitCode | Should -Not -Be 0
-            $r.StdErr   | Should -Match 'no repos'
+            $r.StdErr   | Should -Match 'at\s+least one project for runtime use'
         }
 
         It 'rejects a double-quote in repo name' {
             $cfg = [pscustomobject]@{
-                repos = @([pscustomobject]@{ name='bad"name'; path='p'; master='main'; auto_merge=$false })
+                config_version = 1
+                working_dir = ''
+                repos = @([pscustomobject]@{ name='bad"name'; path='p'; master='main'; master_remote='origin'; auto_merge=$false })
                 final_command = ''
+                max_wait_seconds = 600
             }
             Write-Config -Path $script:CfgPath -Object $cfg
             $r = Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath
@@ -205,7 +156,7 @@ Describe 'lib/load-config.ps1' {
             Write-Config -Path $script:CfgPath -Object $cfg
             $r = Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath
             $r.ExitCode | Should -Not -Be 0
-            $r.StdErr   | Should -Match 'master_remote contains characters that are unsafe\s+for CMD'
+            $r.StdErr   | Should -Match "master_remote'.*unsafe for CMD"
         }
 
         It 'rejects a double-quote in working_dir' {
@@ -214,7 +165,7 @@ Describe 'lib/load-config.ps1' {
             Write-Config -Path $script:CfgPath -Object $cfg
             $r = Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath
             $r.ExitCode | Should -Not -Be 0
-            $r.StdErr   | Should -Match 'working_dir must not contain double-quote'
+            $r.StdErr   | Should -Match "(?s)working_dir'.*must\s+not\s+contain double-quote"
         }
 
         It 'rejects a double-quote in final_command' {
@@ -223,16 +174,18 @@ Describe 'lib/load-config.ps1' {
             Write-Config -Path $script:CfgPath -Object $cfg
             $r = Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath
             $r.ExitCode | Should -Not -Be 0
-            $r.StdErr   | Should -Match 'final_command must not contain double-quote'
+            $r.StdErr   | Should -Match "(?s)final_command'.*must\s+not\s+contain double-quote"
         }
     }
 
     Context 'edge cases' {
         It 'handles a large number of repos and emits correct counts' {
             $repos = 1..100 | ForEach-Object {
-                [pscustomobject]@{ name="repo-$_"; path="repo-$_"; master='main'; auto_merge=$false }
+                [pscustomobject]@{ name="repo-$_"; path="repo-$_"; master='main'; master_remote='origin'; auto_merge=$false }
             }
-            $cfg = [pscustomobject]@{ repos=$repos; final_command='' }
+            $cfg = [pscustomobject]@{
+                config_version=1; working_dir=''; repos=$repos; final_command=''; max_wait_seconds=600
+            }
             Write-Config -Path $script:CfgPath -Object $cfg
 
             (Invoke-Loader -ConfigPath $script:CfgPath -OutPath $script:OutPath).ExitCode | Should -Be 0
@@ -248,8 +201,11 @@ Describe 'lib/load-config.ps1' {
             # round-tripped name only contains 7-bit bytes (the loader's documented
             # contract is ASCII output for cmd consumption).
             $cfg = [pscustomobject]@{
-                repos         = @([pscustomobject]@{ name='ascii-only'; path='p'; master='main'; auto_merge=$false })
+                config_version = 1
+                working_dir = ''
+                repos         = @([pscustomobject]@{ name='ascii-only'; path='p'; master='main'; master_remote='origin'; auto_merge=$false })
                 final_command = ''
+                max_wait_seconds = 600
             }
             Write-Config -Path $script:CfgPath -Object $cfg
 
