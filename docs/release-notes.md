@@ -9,6 +9,7 @@ This file is the **template**, not a changelog. Past releases are not duplicated
 ## Current configuration milestone
 
 - **Versioned configuration schema.** Schema v0001 adds integer `config_version: 1`, automatically migrates existing unversioned v0000 configs in memory, writes canonical UTF-8 JSON atomically, and keeps portable exports on the same versioned schema. Schema code now lives in self-contained, zero-padded `lib\config\versions\vNNNN` packages linked by an ordered migration chain and checked by CI.
+- **Explicit project sync endpoints.** Schema v0002 adds `dev_remote`, remote and local-branch discovery in the project editor, and routes merge-mode pushes to the selected Development repo instead of assuming `origin`.
 
 ## Template
 

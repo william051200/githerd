@@ -4,7 +4,7 @@
     WPF editor for githerd's config.json.
 
 .DESCRIPTION
-    List+detail editor for the repo collection, post-sync command, and
+    List+detail editor for the project collection, post-sync command, and
     worker timeout. Layout in MainWindow.xaml; styling in Theme.xaml.
 
     Exit codes (preserved contract used by sync.bat):
@@ -156,25 +156,32 @@ public class GitherdRepoVM : DependencyObject {
         DependencyProperty.Register("auto_merge", typeof(bool), typeof(GitherdRepoVM));
     public static readonly DependencyProperty MasterRemoteProperty =
         DependencyProperty.Register("master_remote", typeof(string), typeof(GitherdRepoVM));
+    public static readonly DependencyProperty DevRemoteProperty =
+        DependencyProperty.Register("dev_remote", typeof(string), typeof(GitherdRepoVM));
+    public bool is_new { get; set; }
 
     public string name       { get { return (string)GetValue(NameProperty); }   set { SetValue(NameProperty, value); } }
     public string path       { get { return (string)GetValue(PathProperty); }   set { SetValue(PathProperty, value); } }
     public string master     { get { return (string)GetValue(MasterProperty); } set { SetValue(MasterProperty, value); } }
     public bool   auto_merge { get { return (bool)GetValue(AutoMergeProperty); } set { SetValue(AutoMergeProperty, value); } }
     public string master_remote { get { return (string)GetValue(MasterRemoteProperty); } set { SetValue(MasterRemoteProperty, value); } }
+    public string dev_remote { get { return (string)GetValue(DevRemoteProperty); } set { SetValue(DevRemoteProperty, value); } }
 }
 '@
 }
 
 function New-RepoVM {
     param($Source)
-    if (-not $Source) { $Source = New-GitHerdRepoConfig }
+    $isNew = $null -eq $Source
+    if ($isNew) { $Source = New-GitHerdRepoConfig }
     $vm = New-Object GitherdRepoVM
     $vm.name          = [string]$Source.name
     $vm.path          = [string]$Source.path
     $vm.master        = [string]$Source.master
     $vm.auto_merge    = [bool]$Source.auto_merge
+    $vm.dev_remote    = [string]$Source.dev_remote
     $vm.master_remote = [string]$Source.master_remote
+    $vm.is_new        = $isNew
     return $vm
 }
 
@@ -198,8 +205,8 @@ foreach ($n in 'ErrorBox','ErrorText','BtnDismissBanner','RepoList','RepoCount',
                 'MenuReportBug','MenuSuggest','MenuCheckUpdates','MenuOpenReadme',
                 'UpdateBanner','UpdateBannerText','BtnWhatsNew','BtnUpdateNow','BtnDismissUpdate',
                 'TxtWorkingDir','BtnBrowseWorkingDir',
-                'DetailPanel','EmptyState','TxtName','TxtPath','BtnBrowse','TxtMaster',
-                'CmbMasterRemote','ChkAutoMerge','TxtFinal','TxtTimeout','BtnCancel','BtnSave','BtnSaveRun') {
+                'DetailPanel','EmptyState','TxtName','TxtPath','BtnBrowse','CmbMaster',
+                'CmbDevRemote','CmbMasterRemote','ChkAutoMerge','TxtFinal','TxtTimeout','BtnCancel','BtnSave','BtnSaveRun') {
     $ctl[$n] = $window.FindName($n)
 }
 
@@ -283,9 +290,13 @@ function Bind-Detail {
     if ($null -eq $Vm) {
         $ctl.DetailPanel.Visibility = 'Collapsed'
         $ctl.EmptyState.Visibility  = 'Visible'
-        $ctl.TxtName.Text = ''; $ctl.TxtPath.Text = ''; $ctl.TxtMaster.Text = ''
+        $ctl.TxtName.Text = ''; $ctl.TxtPath.Text = ''
+        $ctl.CmbDevRemote.Items.Clear()
         $ctl.CmbMasterRemote.Items.Clear()
+        $ctl.CmbMaster.Items.Clear()
+        $ctl.CmbDevRemote.IsEnabled = $false
         $ctl.CmbMasterRemote.IsEnabled = $false
+        $ctl.CmbMaster.IsEnabled = $false
         $ctl.ChkAutoMerge.IsChecked = $false
         $ctl.ChkAutoMerge.IsEnabled = $false
     } else {
@@ -293,23 +304,27 @@ function Bind-Detail {
         $ctl.EmptyState.Visibility  = 'Collapsed'
         $ctl.TxtName.Text   = [string]$Vm.name
         $ctl.TxtPath.Text   = [string]$Vm.path
-        $ctl.TxtMaster.Text = [string]$Vm.master
+        $ctl.CmbDevRemote.IsEnabled = $true
         $ctl.CmbMasterRemote.IsEnabled = $true
+        $ctl.CmbMaster.IsEnabled = $true
         $ctl.ChkAutoMerge.IsEnabled = $true
         $ctl.ChkAutoMerge.IsChecked = [bool]$Vm.auto_merge
     }
     $script:current = $Vm
     $script:suppressDetailWrite = $false
-    if ($null -ne $Vm) { Refresh-MasterRemoteOptions }
+    if ($null -ne $Vm) { Refresh-GitOptions }
 }
 
 function Push-Detail-To-Vm {
     if ($script:suppressDetailWrite -or $null -eq $script:current) { return }
     $script:current.name       = $ctl.TxtName.Text
     $script:current.path       = $ctl.TxtPath.Text
-    $script:current.master     = $ctl.TxtMaster.Text
-    $selection = [string]$ctl.CmbMasterRemote.SelectedItem
-    if ($selection) { $script:current.master_remote = $selection }
+    $master = [string]$ctl.CmbMaster.SelectedItem
+    if ($master) { $script:current.master = $master }
+    $devSelection = [string]$ctl.CmbDevRemote.SelectedValue
+    if ($devSelection) { $script:current.dev_remote = $devSelection }
+    $masterSelection = [string]$ctl.CmbMasterRemote.SelectedValue
+    if ($masterSelection) { $script:current.master_remote = $masterSelection }
     $script:current.auto_merge = [bool]$ctl.ChkAutoMerge.IsChecked
 }
 
@@ -321,9 +336,10 @@ $ctl.RepoList.Add_SelectionChanged({
 $ctl.TxtName.Add_TextChanged({   Push-Detail-To-Vm })
 $ctl.TxtPath.Add_TextChanged({
     Push-Detail-To-Vm
-    Refresh-MasterRemoteOptions
+    Refresh-GitOptions
 })
-$ctl.TxtMaster.Add_TextChanged({ Push-Detail-To-Vm })
+$ctl.CmbMaster.Add_SelectionChanged({ Push-Detail-To-Vm })
+$ctl.CmbDevRemote.Add_SelectionChanged({ Push-Detail-To-Vm })
 $ctl.CmbMasterRemote.Add_SelectionChanged({ Push-Detail-To-Vm })
 $ctl.ChkAutoMerge.Add_Click({ Push-Detail-To-Vm })
 
@@ -409,38 +425,136 @@ function Get-RepoRemotes {
     }
 
     try {
-        $output = @(& git -C $resolved remote 2>$null)
+        $output = @(& git -C $resolved remote -v 2>$null)
         if ($LASTEXITCODE -ne 0) { return @() }
-        return @($output | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ })
+        $byName = [ordered]@{}
+        foreach ($line in $output) {
+            if ([string]$line -notmatch '^\s*(\S+)\s+(\S+)\s+\((fetch|push)\)\s*$') { continue }
+            $name = $Matches[1]
+            if (-not $byName.Contains($name)) {
+                $byName[$name] = [ordered]@{ Name = $name; FetchUrl = ''; PushUrl = '' }
+            }
+            if ($Matches[3] -eq 'fetch') {
+                $byName[$name].FetchUrl = $Matches[2]
+            } else {
+                $byName[$name].PushUrl = $Matches[2]
+            }
+        }
+        return @($byName.Values | ForEach-Object { [pscustomobject]$_ })
     } catch {
         return @()
     }
 }
 
-function Refresh-MasterRemoteOptions {
+function Get-RepoBranches {
+    param([string]$RepoPath)
+    $resolved = Resolve-RepoPath $RepoPath
+    if (-not $resolved -or -not (Test-Path -LiteralPath $resolved -PathType Container)) {
+        return @()
+    }
+    try {
+        $output = @(& git -C $resolved branch '--format=%(refname:short)' 2>$null)
+        if ($LASTEXITCODE -ne 0) { return @() }
+        return @($output | ForEach-Object { ([string]$_).Trim() } |
+            Where-Object { $_ -and -not $_.StartsWith('*') -and $_ -notmatch '^remotes/' })
+    } catch {
+        return @()
+    }
+}
+
+function Get-RepoCurrentBranch {
+    param([string]$RepoPath)
+    $resolved = Resolve-RepoPath $RepoPath
+    if (-not $resolved -or -not (Test-Path -LiteralPath $resolved -PathType Container)) {
+        return ''
+    }
+    try {
+        $output = @(& git -C $resolved branch --show-current 2>$null)
+        if ($LASTEXITCODE -ne 0 -or $output.Count -eq 0) { return '' }
+        return ([string]$output[0]).Trim()
+    } catch {
+        return ''
+    }
+}
+
+function New-RemoteOption {
+    param($Remote, [bool]$PreferPush)
+    $url = if ($PreferPush) { [string]$Remote.PushUrl } else { [string]$Remote.FetchUrl }
+    if (-not $url) {
+        $url = if ($PreferPush) { [string]$Remote.FetchUrl } else { [string]$Remote.PushUrl }
+    }
+    [pscustomobject]@{
+        Name = [string]$Remote.Name
+        Display = if ($url) { "$($Remote.Name) - $url" } else { [string]$Remote.Name }
+    }
+}
+
+function Set-RemoteOptions {
+    param($Combo, [object[]]$Remotes, [string]$Selected, [string]$Fallback, [bool]$PreferPush)
+    if ([string]::IsNullOrWhiteSpace($Selected)) { $Selected = $Fallback }
+    $options = New-Object System.Collections.Generic.List[object]
+    $seen = @{}
+    foreach ($remote in @($Remotes)) {
+        $name = [string]$remote.Name
+        if ($name -and -not $seen.ContainsKey($name.ToLowerInvariant())) {
+            $options.Add((New-RemoteOption -Remote $remote -PreferPush $PreferPush))
+            $seen[$name.ToLowerInvariant()] = $true
+        }
+    }
+    foreach ($name in @($Selected, $Fallback)) {
+        if ($name -and -not $seen.ContainsKey($name.ToLowerInvariant())) {
+            $options.Add([pscustomobject]@{ Name = $name; Display = $name })
+            $seen[$name.ToLowerInvariant()] = $true
+        }
+    }
+    $Combo.Items.Clear()
+    foreach ($option in $options) { [void]$Combo.Items.Add($option) }
+    $Combo.SelectedValue = $Selected
+}
+
+function Refresh-GitOptions {
     if ($script:suppressDetailWrite -or $null -eq $script:current) { return }
 
-    $selected = [string]$script:current.master_remote
-    if ([string]::IsNullOrWhiteSpace($selected)) { $selected = 'origin' }
-
-    $options = New-Object System.Collections.Generic.List[string]
-    foreach ($remote in @((@(Get-RepoRemotes ([string]$script:current.path))) + @($selected, 'origin'))) {
-        if ($remote -and -not $options.Contains([string]$remote)) {
-            $options.Add([string]$remote)
+    $remotes = @(Get-RepoRemotes ([string]$script:current.path))
+    $branches = @(Get-RepoBranches ([string]$script:current.path))
+    $devSelected = [string]$script:current.dev_remote
+    $masterSelected = [string]$script:current.master_remote
+    $branchSelected = [string]$script:current.master
+    if ($script:current.is_new -and $branches.Count -gt 0) {
+        if ($branches -contains 'main') {
+            $branchSelected = 'main'
+        } else {
+            $currentBranch = Get-RepoCurrentBranch ([string]$script:current.path)
+            $branchSelected = if ($currentBranch -and $branches -contains $currentBranch) {
+                $currentBranch
+            } else {
+                [string]$branches[0]
+            }
         }
+        $script:current.master = $branchSelected
+        $script:current.is_new = $false
     }
 
     $script:suppressDetailWrite = $true
     try {
-        $ctl.CmbMasterRemote.Items.Clear()
-        foreach ($option in $options) { [void]$ctl.CmbMasterRemote.Items.Add($option) }
-        $ctl.CmbMasterRemote.SelectedItem = $selected
+        Set-RemoteOptions -Combo $ctl.CmbDevRemote -Remotes $remotes -Selected $devSelected -Fallback 'origin' -PreferPush $true
+        Set-RemoteOptions -Combo $ctl.CmbMasterRemote -Remotes $remotes -Selected $masterSelected -Fallback 'upstream' -PreferPush $false
+
+        $branchOptions = New-Object System.Collections.Generic.List[string]
+        foreach ($branch in @($branches + @($branchSelected))) {
+            if ($branch -and -not $branchOptions.Contains([string]$branch)) {
+                $branchOptions.Add([string]$branch)
+            }
+        }
+        $ctl.CmbMaster.Items.Clear()
+        foreach ($branch in $branchOptions) { [void]$ctl.CmbMaster.Items.Add($branch) }
+        $ctl.CmbMaster.SelectedItem = $branchSelected
     } finally {
         $script:suppressDetailWrite = $false
     }
 }
 
-$ctl.TxtWorkingDir.Add_TextChanged({ Refresh-MasterRemoteOptions })
+$ctl.TxtWorkingDir.Add_TextChanged({ Refresh-GitOptions })
 
 function Try-Relativize-Under-WorkingDir {
     # If $Selected lives under the working dir, return the path relative to it
@@ -478,7 +592,7 @@ $ctl.BtnBrowse.Add_Click({
         $resolved = Resolve-RepoPath ([string]$script:current.path)
         if ($resolved -and (Test-Path -LiteralPath $resolved)) { $initial = $resolved }
     }
-    $picked = Show-FolderPicker -Title 'Select repository folder' -InitialDir $initial
+    $picked = Show-FolderPicker -Title 'Select project folder' -InitialDir $initial
     if ($picked) {
         $ctl.TxtPath.Text = (Try-Relativize-Under-WorkingDir $picked)
     }
@@ -521,7 +635,7 @@ $ctl.BtnExport.Add_Click({
     try {
         $exportCfg = New-GitHerdExportConfig -Config $cfg
         Write-GitHerdConfig -Path $dlg.FileName -Config $exportCfg
-        Show-Info ("Exported to {0}. Working directory and repo paths were not included - recipients will set their own." -f $dlg.FileName)
+        Show-Info ("Exported to {0}. Working directory and project paths were not included - recipients will set their own." -f $dlg.FileName)
     } catch {
         Show-Error ("Export failed: " + $_.Exception.Message)
     }
@@ -581,7 +695,7 @@ $ctl.BtnImport.Add_Click({
         $parts += "working directory '$wd' doesn't exist on this machine"
     }
     if ($blank -gt 0) {
-        $parts += "{0} repo(s) need a path - click Browse to set them" -f $blank
+        $parts += "{0} project(s) need a path - click Browse to set them" -f $blank
     }
     if ($missing.Count -gt 0) {
         $list = ($missing | Select-Object -First 5) -join ', '
@@ -756,6 +870,7 @@ function Validate-And-Build {
         $repos += [pscustomobject]@{
             name          = $name
             path          = $path
+            dev_remote    = ([string]$vm.dev_remote).Trim()
             master_remote = ([string]$vm.master_remote).Trim()
             master        = $master
             auto_merge    = [bool]$vm.auto_merge

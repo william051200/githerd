@@ -22,15 +22,20 @@ Describe 'Repository sanity' {
         $v | Should -Match '^\d+\.\d+\.\d+'
     }
 
-    It 'wires separate master-remote and auto-merge controls' {
+    It 'wires development, master-remote, branch, and auto-merge controls' {
         $xaml = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'ui\MainWindow.xaml') -Raw
         $ui = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'ui\config-ui.ps1') -Raw
         $theme = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'ui\Theme.xaml') -Raw
 
+        $xaml | Should -Match 'x:Name="CmbDevRemote"'
         $xaml | Should -Match 'x:Name="CmbMasterRemote"'
+        $xaml | Should -Match 'x:Name="CmbMaster"'
         $xaml | Should -Match 'x:Name="ChkAutoMerge"'
         $ui | Should -Match 'function Get-RepoRemotes'
+        $ui | Should -Match 'remote -v'
+        $ui | Should -Match "branch '--format=%\(refname:short\)'"
         $ui | Should -Match '@\(Get-RepoRemotes'
+        $ui | Should -Match 'dev_remote'
         $ui | Should -Match 'master_remote'
         $theme | Should -Match 'x:Key="ComboBoxStyle"'
         $theme | Should -Match 'x:Key="ThinScrollViewer"'

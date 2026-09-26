@@ -1,6 +1,6 @@
 # githerd
 
-Sync a herd of Git repositories **in parallel** from one Windows command, with live progress bars and an optional GUI for editing the config.
+Sync a herd of Git projects **in parallel** from one Windows command, with live progress bars and an optional GUI for editing the config.
 
 ```
 my-repo-a             [####################] 100% OK
@@ -22,7 +22,7 @@ irm https://raw.githubusercontent.com/william051200/githerd/main/install.ps1 | i
 This installs GitHerd into `%LOCALAPPDATA%\Programs\GitHerd` and adds it to your user `PATH`. Open a new terminal, then:
 
 ```bat
-githerd --config       :: open the GUI to set up your repos
+githerd --config       :: open the GUI to set up your projects
 githerd                :: sync everything in parallel
 ```
 
@@ -56,12 +56,13 @@ GitHerd also pings GitHub at most **once per day after 12:00 PM Malaysia time** 
 
 ```json
 {
-  "config_version": 1,
+  "config_version": 2,
   "working_dir": "C:\\code",
   "repos": [
     {
       "name": "my-repo-a",
       "path": "my-repo-a",
+      "dev_remote": "origin",
       "master_remote": "upstream",
       "master": "main",
       "auto_merge": true
@@ -69,6 +70,7 @@ GitHerd also pings GitHub at most **once per day after 12:00 PM Malaysia time** 
     {
       "name": "my-repo-b",
       "path": "C:\\code\\my-repo-b",
+      "dev_remote": "origin",
       "master_remote": "origin",
       "master": "main",
       "auto_merge": false
@@ -81,16 +83,17 @@ GitHerd also pings GitHub at most **once per day after 12:00 PM Malaysia time** 
 
 | Field | Quick meaning |
 |---|---|
-| `config_version` | Persisted schema version. Current configs use integer version `1`. |
-| `working_dir` | Optional root folder. Relative repo `path`s are resolved against it, and `final_command` runs from it. Leave `""` to use the shell's current directory. |
+| `config_version` | Persisted schema version. Current configs use integer version `2`. |
+| `working_dir` | Optional root folder. Relative project `path`s are resolved against it, and `final_command` runs from it. Leave `""` to use the shell's current directory. |
 | `name` | Friendly label / log file name. |
 | `path` | Absolute (`C:\code\repo`) or relative to `working_dir` (e.g. `my-repo-a`). |
 | `master` | The branch to sync (e.g. `main`, `master`, `dev`). |
-| `master_remote` | Remote that owns the latest code. The GUI discovers choices from the local repository. |
-| `auto_merge` | `true` = fetch/prune and ff-merge from `master_remote`, then push origin. `false` = pull/prune from `master_remote`. |
-| `final_command` | Optional command to run once after all repos finish (`""` to skip). |
+| `dev_remote` | Development repo remote that receives the updated master branch. |
+| `master_remote` | Master repo remote that provides the latest code. |
+| `auto_merge` | `true` = fetch/prune and ff-merge from `master_remote`, then push to `dev_remote`. `false` = pull/prune from `master_remote`. |
+| `final_command` | Optional command to run once after all projects finish (`""` to skip). |
 
-> Tip: in the GUI, select a repo and use **Browse…** to insert a correctly-escaped absolute path.
+> Tip: in the GUI, select a project and use **Browse…** to insert a correctly-escaped absolute path.
 
 Full schema, restrictions, and the relative-path rules: see [`docs/configuration.md`](docs/configuration.md).
 
@@ -99,12 +102,12 @@ Full schema, restrictions, and the relative-path rules: see [`docs/configuration
 In the config window, use **↑ Import** / **↓ Export** in the top-right
 of the page header to swap a `githerd-config.json` file with teammates.
 Export writes a portable current-schema config, including `config_version`,
-repos, post-sync command, and timeout. It blanks `working_dir` and repo paths;
+projects, post-sync command, and timeout. It blanks `working_dir` and project paths;
 Import runs the same migration and validation pipeline as normal loading, then
 replaces the current state in memory — click **Save** to commit.
 
 Existing unversioned configs are treated as legacy schema v0 and migrated in
-memory to v1. Reading never rewrites the source file; the versioned canonical
+memory through v1 to v2. Reading never rewrites the source file; the versioned canonical
 format is persisted only when you Save, Save & Run, or Export.
 
 ---
@@ -113,10 +116,10 @@ format is persisted only when you Save, Save & Run, or Export.
 
 - [Install](docs/install.md) — portable mode, custom location, uninstall, troubleshooting the installer.
 - [Configuration reference](docs/configuration.md) — every field, path rules, JSON escaping, restrictions.
-- [How it works](docs/how-it-works.md) — folder layout, per-repo phase workflow, UI ↔ sync handshake.
+- [How it works](docs/how-it-works.md) — folder layout, per-project phase workflow, UI ↔ sync handshake.
 - [UI design](docs/ui-design.md) — how the WPF config window maps to [`DESIGN.md`](DESIGN.md).
 - [Troubleshooting](docs/troubleshooting.md) — common failures and fixes.
-- [Reference](docs/reference.md) — exit codes and per-repo status strings.
+- [Reference](docs/reference.md) — exit codes and per-project status strings.
 - [Release notes format](docs/release-notes.md) — template for GitHub Release bodies (read this before cutting a new tag).
 
 ---

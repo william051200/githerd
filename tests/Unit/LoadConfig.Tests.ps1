@@ -43,11 +43,11 @@ BeforeAll {
 
     function New-MinimalConfig {
         [pscustomobject]@{
-            config_version   = 1
+            config_version   = 2
             working_dir      = 'C:\code'
             repos            = @(
-                [pscustomobject]@{ name='repo-a'; path='repo-a';            master='main';   auto_merge=$true;  master_remote='upstream' }
-                [pscustomobject]@{ name='repo-b'; path='C:\code\repo-b';    master='master'; auto_merge=$false; master_remote='origin'   }
+                [pscustomobject]@{ name='repo-a'; path='repo-a';         dev_remote='fork';   master='main';   auto_merge=$true;  master_remote='upstream' }
+                [pscustomobject]@{ name='repo-b'; path='C:\code\repo-b'; dev_remote='origin'; master='master'; auto_merge=$false; master_remote='origin'   }
             )
             final_command    = 'echo done'
             max_wait_seconds = 300
@@ -77,6 +77,7 @@ Describe 'lib/load-config.ps1' {
             $out | Should -Match 'set "repos\[0\].master=main"'
             $out | Should -Match 'set "repos\[0\].auto_merge=true"'
             $out | Should -Match 'set "repos\[0\].master_remote=upstream"'
+            $out | Should -Match 'set "repos\[0\].dev_remote=fork"'
             $out | Should -Match 'set "repos\[1\].name=repo-b"'
             $out | Should -Match 'set "repos\[1\].auto_merge=false"'
             $out | Should -Match 'set "repos\[1\].master_remote=origin"'
@@ -138,9 +139,9 @@ Describe 'lib/load-config.ps1' {
 
         It 'rejects a double-quote in repo name' {
             $cfg = [pscustomobject]@{
-                config_version = 1
+                config_version = 2
                 working_dir = ''
-                repos = @([pscustomobject]@{ name='bad"name'; path='p'; master='main'; master_remote='origin'; auto_merge=$false })
+                repos = @([pscustomobject]@{ name='bad"name'; path='p'; dev_remote='origin'; master='main'; master_remote='origin'; auto_merge=$false })
                 final_command = ''
                 max_wait_seconds = 600
             }
@@ -181,10 +182,10 @@ Describe 'lib/load-config.ps1' {
     Context 'edge cases' {
         It 'handles a large number of repos and emits correct counts' {
             $repos = 1..100 | ForEach-Object {
-                [pscustomobject]@{ name="repo-$_"; path="repo-$_"; master='main'; master_remote='origin'; auto_merge=$false }
+                [pscustomobject]@{ name="repo-$_"; path="repo-$_"; dev_remote='origin'; master='main'; master_remote='origin'; auto_merge=$false }
             }
             $cfg = [pscustomobject]@{
-                config_version=1; working_dir=''; repos=$repos; final_command=''; max_wait_seconds=600
+                config_version=2; working_dir=''; repos=$repos; final_command=''; max_wait_seconds=600
             }
             Write-Config -Path $script:CfgPath -Object $cfg
 
@@ -201,9 +202,9 @@ Describe 'lib/load-config.ps1' {
             # round-tripped name only contains 7-bit bytes (the loader's documented
             # contract is ASCII output for cmd consumption).
             $cfg = [pscustomobject]@{
-                config_version = 1
+                config_version = 2
                 working_dir = ''
-                repos         = @([pscustomobject]@{ name='ascii-only'; path='p'; master='main'; master_remote='origin'; auto_merge=$false })
+                repos         = @([pscustomobject]@{ name='ascii-only'; path='p'; dev_remote='origin'; master='main'; master_remote='origin'; auto_merge=$false })
                 final_command = ''
                 max_wait_seconds = 600
             }

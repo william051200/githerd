@@ -98,9 +98,21 @@ Describe 'sync.bat integration' -Tag 'Integration' {
             if (-not $PSBoundParameters.ContainsKey('WorkingDir')) {
                 $WorkingDir = $script:Workspace
             }
+            $normalizedRepos = @(
+                foreach ($repo in $Repos) {
+                    $copy = @{}
+                    foreach ($key in $repo.Keys) { $copy[$key] = $repo[$key] }
+                    if (-not $copy.ContainsKey('dev_remote')) { $copy.dev_remote = 'origin' }
+                    if (-not $copy.ContainsKey('master_remote')) {
+                        $copy.master_remote = if ([bool]$copy.auto_merge) { 'upstream' } else { 'origin' }
+                    }
+                    [pscustomobject]$copy
+                }
+            )
             $cfg = [ordered]@{
+                config_version   = 2
                 working_dir      = $WorkingDir
-                repos            = $Repos
+                repos            = $normalizedRepos
                 final_command    = $FinalCommand
                 max_wait_seconds = $MaxWaitSeconds
             }
@@ -241,6 +253,34 @@ Describe 'sync.bat integration' -Tag 'Integration' {
         ($r.GitCalls -join "`n") | Should -Not -Match '\|fetch --prune upstream main(?:\r?\n|$)'
     }
 
+    It 'auto-merge pushes to the configured development remote' {
+        New-FakeRepo -Name 'repoFork' | Out-Null
+        Write-Config -Repos @(
+            @{ name = 'repoFork'; path = 'repoFork'; master = 'main'; auto_merge = $true; dev_remote = 'fork'; master_remote = 'upstream' }
+        )
+
+        $r = Invoke-Sync
+
+        $r.ExitCode | Should -Be 0
+        ($r.GitCalls -join "`n") | Should -Match '\|fetch --prune upstream main(?:\r?\n|$)'
+        ($r.GitCalls -join "`n") | Should -Match '\|fetch --prune fork main(?:\r?\n|$)'
+        ($r.GitCalls -join "`n") | Should -Match '\|push fork main --no-verify(?:\r?\n|$)'
+        ($r.GitCalls -join "`n") | Should -Not -Match '\|push origin '
+    }
+
+    It 'same development and master remote avoids duplicate fetches and still pushes' {
+        New-FakeRepo -Name 'sameRemote' | Out-Null
+        Write-Config -Repos @(
+            @{ name = 'sameRemote'; path = 'sameRemote'; master = 'main'; auto_merge = $true; dev_remote = 'company'; master_remote = 'company' }
+        )
+
+        $r = Invoke-Sync
+
+        $r.ExitCode | Should -Be 0
+        @($r.GitCalls | Where-Object { $_ -match '\|fetch --prune company main$' }).Count | Should -Be 1
+        ($r.GitCalls -join "`n") | Should -Match '\|push company main --no-verify(?:\r?\n|$)'
+    }
+
     It 'multiple repos all succeed' {
         New-FakeRepo -Name 'r1' | Out-Null
         New-FakeRepo -Name 'r2' | Out-Null
@@ -270,7 +310,7 @@ Describe 'sync.bat integration' -Tag 'Integration' {
 
         $r.ExitCode | Should -Be 1
         $r.Stdout | Should -Match 'FAILED \(git push origin\)'
-        $r.Stdout | Should -Match 'Log files for FAILED repos:'
+        $r.Stdout | Should -Match 'Log files for FAILED projects:'
         $r.Stdout | Should -Match 'bad\.log'
     }
 
@@ -396,6 +436,25 @@ exit /b 0
         $firsts | Should -Not -Contain 'stash'
         # And no checkout dance either, since branch matches master already
         $firsts | Should -Not -Contain 'checkout'
+    }
+
+    It 'fast-path: merge mode compares the configured development and master remotes' {
+        New-FakeRepo -Name 'customTips' | Out-Null
+        Write-Config -Repos @(
+            @{ name = 'customTips'; path = 'customTips'; master = 'main'; auto_merge = $true; dev_remote = 'fork'; master_remote = 'company' }
+        )
+
+        $r = Invoke-Sync -EnvVars @{
+            FAKEGIT_LOCAL_SHA   = '1212121212121212121212121212121212121212'
+            FAKEGIT_FORK_SHA    = '1212121212121212121212121212121212121212'
+            FAKEGIT_COMPANY_SHA = '1212121212121212121212121212121212121212'
+        }
+
+        $r.ExitCode | Should -Be 0
+        $r.Stdout | Should -Match 'customTips\s+::\s+OK \(already up to date\)'
+        ($r.GitCalls -join "`n") | Should -Match '\|ls-remote fork main(?:\r?\n|$)'
+        ($r.GitCalls -join "`n") | Should -Match '\|ls-remote company main(?:\r?\n|$)'
+        ($r.GitCalls -join "`n") | Should -Not -Match '\|ls-remote origin main(?:\r?\n|$)'
     }
 
     It 'fast-path: auto_merge=false skips pull when local==origin' {

@@ -24,28 +24,28 @@ The whole folder is self-contained — copy or move it anywhere.
 
 ---
 
-## Per-repo workflow
+## Per-project workflow
 
-Each repo runs in its own background `cmd` worker, in parallel. Before step 1 each worker resolves its effective directory: if `repos[].path` is absolute it is used as-is, otherwise it is joined onto `working_dir` (or the shell's current directory when `working_dir` is empty). The worker then does:
+Each project runs in its own background `cmd` worker, in parallel. Before step 1 each worker resolves its effective directory: if `repos[].path` is absolute it is used as-is, otherwise it is joined onto `working_dir` (or the shell's current directory when `working_dir` is empty). The worker then does:
 
 1. **starting** — sanity-check the path exists and is a Git repo.
 2. **stashing** — if the working tree is dirty, `git stash push -u`.
 3. **checkout master** — switch to the configured master branch (only if not already there).
 4. If `auto_merge: true`:
    - **fetching &lt;master-remote&gt;** — `git fetch --prune <master_remote> <master>`
-   - **fetching origin** — `git fetch --prune origin <master>` when the master remote is not `origin`
+   - **fetching &lt;development-remote&gt;** — `git fetch --prune <dev_remote> <master>` when the remotes differ
    - **merging** — `git merge --ff-only <master_remote>/<master>`
-   - **pushing** — `git push origin <master> --no-verify`
+   - **pushing &lt;development-remote&gt;** — `git push <dev_remote> <master> --no-verify`
 5. If `auto_merge: false`:
    - **pulling &lt;master-remote&gt;** — `git pull --prune <master_remote> <master>`
 6. **checkout original** — switch back to the branch you were on.
 7. **popping stash** — if step 2 stashed, `git stash pop` (skipped if step 6 failed).
 
-If any step fails, the repo's status becomes `FAILED (<reason>)` and its full log path is printed at the end. The temp folder containing logs is **kept on failure** so you can inspect it.
+If any step fails, the project's status becomes `FAILED (<reason>)` and its full log path is printed at the end. The temp folder containing logs is **kept on failure** so you can inspect it.
 
-Fetch and pull operations prune remote-tracking refs for branches that no longer exist on the corresponding remote. Pruning does not delete local branches. Repositories that take the already-up-to-date fast path skip pruning along with the rest of the sync.
+Fetch and pull operations prune remote-tracking refs for branches that no longer exist on the corresponding remote. Pruning does not delete local branches. Projects that take the already-up-to-date fast path skip pruning along with the rest of the sync.
 
-Before stashing or switching branches, the fast path compares the local master SHA with the required remote tips. Pull-only checks `master_remote`; auto-merge also checks `origin` when it is a different remote.
+Before stashing or switching branches, the fast path compares the local master SHA with the required remote tips. Pull-only checks `master_remote`; merge mode checks both `master_remote` and `dev_remote`, avoiding duplicate probes when they are the same.
 
 The `final_command` is run **sequentially after all workers finish**, from `working_dir` (or the shell's current directory if `working_dir` is empty).
 

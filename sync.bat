@@ -4,25 +4,25 @@ setlocal enabledelayedexpansion
 REM ============================================================
 REM githerd  ::  sync.bat
 REM
-REM   Syncs each configured git repo concurrently. Each repo
+REM   Syncs each configured project concurrently. Each project
 REM   runs in its own background cmd process; full output goes
-REM   to a per-repo log file. The parent prints one line per
-REM   phase change ([repo] phase) and waits for all workers to
+REM   to a per-project log file. The parent prints one line per
+REM   phase change ([project] phase) and waits for all workers to
 REM   finish before running the configured final command and
 REM   printing the summary.
 REM
-REM   Per repo:
+REM   Per project:
 REM     * Probe remote tip(s) with `git ls-remote`. If the local
 REM       master SHA already matches every required remote SHA,
 REM       skip the rest of the sync entirely (no stash, no
 REM       checkout, no fetch, no merge, no pull, no push).
-REM       - auto_merge=true: skip only if BOTH origin/<master>
+REM       - auto_merge=true: skip only if BOTH dev_remote/<master>
 REM         and master_remote/<master> already equal local.
 REM       - auto_merge=false: skip if master_remote/<master> equals local.
 REM     * If working tree is dirty -> auto-stash, sync, pop stash
 REM     * Switch to master branch
-REM     * If auto_merge=true: fetch the selected master remote and origin,
-REM       ff-merge master_remote/master, then push to origin
+REM     * If auto_merge=true: fetch the selected master and development
+REM       remotes, ff-merge master_remote/master, then push to dev_remote
 REM       Else: pull from the selected master remote
 REM     * Switch back to the original working branch
 REM     * Pop stash (only if branch was successfully restored)
@@ -58,10 +58,10 @@ goto :after_help_dispatch
 :print_help
 set "GH_VER=unknown"
 if exist "%VERSION_FILE%" set /p GH_VER=<"%VERSION_FILE%"
-echo githerd v!GH_VER! - parallel multi-repo git sync
+echo githerd v!GH_VER! - parallel multi-project git sync
 echo.
 echo Usage:
-echo   githerd                          Sync all configured repos in parallel.
+echo   githerd                          Sync all configured projects in parallel.
 echo   githerd --config, -c, /c         Open the configuration UI.
 echo   githerd --update, -u             Install the latest GitHerd release.
 echo   githerd --version, -v            Print the installed version.
@@ -75,8 +75,8 @@ endlocal & exit /b 0
 :help_config
 echo githerd --config  ^(aliases: -c, /c^)
 echo.
-echo Open the configuration UI to add/remove repos, set the post-sync
-echo command, and adjust the per-repo timeout. Saved settings are written
+echo Open the configuration UI to add/remove projects, set the post-sync
+echo command, and adjust the per-project timeout. Saved settings are written
 echo to config.json next to githerd. If you click "Save & Run", the sync
 echo starts immediately after closing the UI.
 endlocal & exit /b 0
@@ -254,7 +254,7 @@ if exist "%LOADER_CMD%" del /q "%LOADER_CMD%" >nul 2>&1
 
 REM ===== Worker dispatch (re-entry point) ==========================
 REM When this script is launched as: cmd /c "<this> --worker IDX TMPD"
-REM run the worker for that repo and exit.
+REM run the worker for that project and exit.
 if /I "%~1"=="--worker" (
     call :worker %2 %3
     endlocal & exit /b !ERRORLEVEL!
@@ -279,7 +279,7 @@ echo ------------------------------------------------------------
 REM --- Capture ESC byte for ANSI cursor moves ---
 for /f "delims=" %%a in ('powershell -NoProfile -Command "[char]27"') do set "ESC=%%a"
 
-REM --- Initialize per-repo bar state ---
+REM --- Initialize per-project bar state ---
 for /L %%i in (0,1,!repo_max_index!) do (
     set /a "cur_pct[%%i]=0"
     set "cur_phase[%%i]="
@@ -340,8 +340,8 @@ for /L %%i in (0,1,!repo_max_index!) do (
     call :read_done %%i
 )
 
-REM --- Per-repo summary ---
-echo [INFO] Per-repo results:
+REM --- Per-project summary ---
+echo [INFO] Per-project results:
 for /L %%i in (0,1,!repo_max_index!) do (
     call echo    %%repos[%%i].name%%  ::  %%done_status[%%i]%%
 )
@@ -349,9 +349,9 @@ echo ------------------------------------------------------------
 echo [INFO] Totals: ok=!ok_count!  failed=!fail_count!  skipped=!skip_count!
 echo ============================================================
 
-REM --- Show log paths for failed repos ---
+REM --- Show log paths for failed projects ---
 if defined ANY_FAILED (
-    echo [INFO] Log files for FAILED repos:
+    echo [INFO] Log files for FAILED projects:
     for /L %%i in (0,1,!repo_max_index!) do (
         call :show_failed_log %%i
     )
@@ -465,14 +465,13 @@ if /I "%P%"=="starting"          ( set "RANGE_MIN=0"   & set "RANGE_MAX=5"   & g
 if /I "%P%"=="checking remote"   ( set "RANGE_MIN=5"   & set "RANGE_MAX=10"  & goto :eof )
 if /I "%P%"=="stashing"          ( set "RANGE_MIN=10"  & set "RANGE_MAX=15"  & goto :eof )
 if /I "%P%"=="checkout master"   ( set "RANGE_MIN=15"  & set "RANGE_MAX=20"  & goto :eof )
-if /I "%P%"=="fetching upstream" ( set "RANGE_MIN=20"  & set "RANGE_MAX=40"  & goto :eof )
-if /I "%P%"=="fetching origin"   ( set "RANGE_MIN=40"  & set "RANGE_MAX=55"  & goto :eof )
 if /I "%P%"=="merging"           ( set "RANGE_MIN=55"  & set "RANGE_MAX=70"  & goto :eof )
-if /I "%P%"=="pulling"           ( set "RANGE_MIN=55"  & set "RANGE_MAX=85"  & goto :eof )
-if /I "%P%"=="pushing"           ( set "RANGE_MIN=70"  & set "RANGE_MAX=90"  & goto :eof )
 if /I "%P%"=="checkout original" ( set "RANGE_MIN=90"  & set "RANGE_MAX=95"  & goto :eof )
 if /I "%P%"=="popping stash"     ( set "RANGE_MIN=95"  & set "RANGE_MAX=99"  & goto :eof )
 for /f "tokens=1" %%T in ("%P%") do set "FIRST=%%T"
+if /I "%FIRST%"=="fetching" ( set "RANGE_MIN=20" & set "RANGE_MAX=55" & goto :eof )
+if /I "%FIRST%"=="pulling"  ( set "RANGE_MIN=55" & set "RANGE_MAX=85" & goto :eof )
+if /I "%FIRST%"=="pushing"  ( set "RANGE_MIN=70" & set "RANGE_MAX=90" & goto :eof )
 if /I "%FIRST%"=="OK"      ( set "RANGE_MIN=100" & set "RANGE_MAX=100" & goto :eof )
 if /I "%FIRST%"=="SKIPPED" ( set "RANGE_MIN=100" & set "RANGE_MAX=100" & goto :eof )
 if /I "%FIRST%"=="FAILED"  ( set "RANGE_MIN=-1"  & set "RANGE_MAX=-1"  & goto :eof )
@@ -551,14 +550,8 @@ set "NAME=!repos[%IDX%].name!"
 set "PATHDIR=!repos[%IDX%].path!"
 set "MASTER_BRANCH=!repos[%IDX%].master!"
 set "AUTO_MERGE=!repos[%IDX%].auto_merge!"
+set "DEV_REMOTE=!repos[%IDX%].dev_remote!"
 set "MASTER_REMOTE=!repos[%IDX%].master_remote!"
-if not defined MASTER_REMOTE (
-    if /I "!AUTO_MERGE!"=="true" (
-        set "MASTER_REMOTE=upstream"
-    ) else (
-        set "MASTER_REMOTE=origin"
-    )
-)
 
 REM Resolve effective directory by combining WORKING_DIR with the configured path.
 REM Absolute paths (X:..., \..., /...) are used as-is.
@@ -569,7 +562,7 @@ set "STATUS_FILE=%TMPD%\%NAME%.status"
 set "DONE_FILE=%TMPD%\%NAME%.done"
 
 > "%LOG%"  echo === Worker for %NAME% (%DATE% %TIME%) ===
->> "%LOG%" echo path=%PATHDIR%  resolved=!EFFECTIVE_DIR!  master=%MASTER_BRANCH%  master_remote=!MASTER_REMOTE!  auto_merge=%AUTO_MERGE%
+>> "%LOG%" echo path=%PATHDIR%  resolved=!EFFECTIVE_DIR!  dev_remote=!DEV_REMOTE!  master_remote=!MASTER_REMOTE!  master=%MASTER_BRANCH%  auto_merge=%AUTO_MERGE%
 
 call :set_phase starting
 
@@ -609,14 +602,14 @@ if not defined MASTER_REMOTE_SHA (
 )
 if /I "!MASTER_REMOTE_SHA!" NEQ "!LOCAL_SHA!" goto :probe_done
 
-if /I "%AUTO_MERGE%"=="true" if /I not "%MASTER_REMOTE%"=="origin" (
-    set "ORIGIN_REMOTE_SHA="
-    for /f "tokens=1" %%S in ('git ls-remote origin %MASTER_BRANCH% 2^>nul') do set "ORIGIN_REMOTE_SHA=%%S"
-    if not defined ORIGIN_REMOTE_SHA (
-        >> "%LOG%" echo [INFO] ls-remote origin failed or returned no ref; falling through to full sync.
+if /I "%AUTO_MERGE%"=="true" if /I not "%MASTER_REMOTE%"=="%DEV_REMOTE%" (
+    set "DEV_REMOTE_SHA="
+    for /f "tokens=1" %%S in ('git ls-remote %DEV_REMOTE% %MASTER_BRANCH% 2^>nul') do set "DEV_REMOTE_SHA=%%S"
+    if not defined DEV_REMOTE_SHA (
+        >> "%LOG%" echo [INFO] ls-remote %DEV_REMOTE% failed or returned no ref; falling through to full sync.
         goto :probe_done
     )
-    if /I "!ORIGIN_REMOTE_SHA!" NEQ "!LOCAL_SHA!" goto :probe_done
+    if /I "!DEV_REMOTE_SHA!" NEQ "!LOCAL_SHA!" goto :probe_done
 )
 
 >> "%LOG%" echo [INFO] Remote already up to date (local=!LOCAL_SHA!); skipping fetch/merge/pull.
@@ -670,12 +663,12 @@ if not defined REPO_FAILED (
 )
 
 if not defined REPO_FAILED (
-    if /I "%AUTO_MERGE%"=="true" if /I not "%MASTER_REMOTE%"=="origin" (
-        call :set_phase "fetching origin"
-        git fetch --prune origin %MASTER_BRANCH% >> "%LOG%" 2>&1
+    if /I "%AUTO_MERGE%"=="true" if /I not "%MASTER_REMOTE%"=="%DEV_REMOTE%" (
+        call :set_phase "fetching %DEV_REMOTE%"
+        git fetch --prune %DEV_REMOTE% %MASTER_BRANCH% >> "%LOG%" 2>&1
         if errorlevel 1 (
             set "REPO_FAILED=1"
-            set "FAIL_REASON=git fetch origin"
+            set "FAIL_REASON=git fetch %DEV_REMOTE%"
         )
     )
 )
@@ -688,11 +681,11 @@ if not defined REPO_FAILED (
             set "REPO_FAILED=1"
             set "FAIL_REASON=git merge --ff-only"
         ) else (
-            call :set_phase "pushing"
-            git push origin %MASTER_BRANCH% --no-verify >> "%LOG%" 2>&1
+            call :set_phase "pushing %DEV_REMOTE%"
+            git push %DEV_REMOTE% %MASTER_BRANCH% --no-verify >> "%LOG%" 2>&1
             if errorlevel 1 (
                 set "REPO_FAILED=1"
-                set "FAIL_REASON=git push origin"
+                set "FAIL_REASON=git push %DEV_REMOTE%"
             )
         )
     ) else (
