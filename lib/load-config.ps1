@@ -31,24 +31,18 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-if (-not (Test-Path -LiteralPath $ConfigPath)) {
-    Write-Error "Config file not found: $ConfigPath"
-    exit 1
-}
-
 try {
-    $cfg = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+    . (Join-Path $PSScriptRoot 'config.ps1')
+    if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
+        throw "Config file not found: $ConfigPath"
+    }
+    $cfg = Read-GitHerdConfig -Path $ConfigPath -ForRuntime
 } catch {
-    Write-Error "Failed to parse JSON: $($_.Exception.Message)"
+    Write-Error $_.Exception.Message
     exit 1
 }
 
 $repos = @($cfg.repos)
-if ($repos.Count -eq 0) {
-    Write-Error 'config.json contains no repos.'
-    exit 1
-}
-
 $lines = New-Object System.Collections.Generic.List[string]
 $lines.Add('@echo off')
 
@@ -58,27 +52,7 @@ for ($i = 0; $i -lt $repos.Count; $i++) {
     $path   = [string]$r.path
     $master = [string]$r.master
     $auto   = if ($r.auto_merge) { 'true' } else { 'false' }
-    $masterRemote = if ($r.auto_merge) { 'upstream' } else { 'origin' }
-    if ($r.PSObject.Properties.Match('master_remote').Count -gt 0 -and
-        -not [string]::IsNullOrWhiteSpace([string]$r.master_remote)) {
-        $masterRemote = [string]$r.master_remote
-    } elseif (-not $r.auto_merge -and
-              $r.PSObject.Properties.Match('pull_remote').Count -gt 0 -and
-              -not [string]::IsNullOrWhiteSpace([string]$r.pull_remote)) {
-        # Compatibility with configs written by the short-lived pull_remote schema.
-        $masterRemote = [string]$r.pull_remote
-    }
-
-    foreach ($v in @($name, $path, $master, $masterRemote)) {
-        if ($v -match '"') {
-            Write-Error "repos[$i] field contains a double-quote, which is not supported."
-            exit 1
-        }
-    }
-    if ($masterRemote.StartsWith('-') -or $masterRemote -match '[\s"&|<>^%!()]') {
-        Write-Error "repos[$i].master_remote contains characters that are unsafe for CMD."
-        exit 1
-    }
+    $masterRemote = [string]$r.master_remote
 
     $lines.Add("set `"repos[$i].name=$name`"")
     $lines.Add("set `"repos[$i].path=$path`"")
@@ -91,33 +65,13 @@ $count = $repos.Count
 $lines.Add("set /a repo_count=$count")
 $lines.Add("set /a repo_max_index=$($count - 1)")
 
-$workingDir = ''
-if ($cfg.PSObject.Properties.Match('working_dir').Count -gt 0 -and $null -ne $cfg.working_dir) {
-    $workingDir = [string]$cfg.working_dir
-}
-if ($workingDir -match '"') {
-    Write-Error 'working_dir must not contain double-quote characters.'
-    exit 1
-}
+$workingDir = [string]$cfg.working_dir
 $lines.Add("set `"WORKING_DIR=$workingDir`"")
 
 $finalCmd = [string]$cfg.final_command
-# Escape ^, &, |, <, > for safety inside a `set "VAR=..."` payload? Inside quoted set,
-# only the closing quote is hazardous. We already rejected quotes above for repo fields;
-# for FINAL_COMMAND we keep quotes by escaping them as "" is not a thing in cmd, so use
-# delayed-expansion-friendly storage instead: write %FINAL_COMMAND% via a file load.
-# Simpler: forbid double-quotes here too and tell the user to wrap paths with spaces using
-# caret-escaping or no quotes.
-if ($finalCmd -match '"') {
-    Write-Error 'final_command must not contain double-quote characters.'
-    exit 1
-}
 $lines.Add("set `"FINAL_COMMAND=$finalCmd`"")
 
-$maxWait = 600
-if ($cfg.PSObject.Properties.Match('max_wait_seconds').Count -gt 0 -and $cfg.max_wait_seconds) {
-    $maxWait = [int]$cfg.max_wait_seconds
-}
+$maxWait = [int]$cfg.max_wait_seconds
 $lines.Add("set /a MAX_WAIT=$maxWait")
 
 Set-Content -LiteralPath $OutPath -Value ($lines -join "`r`n") -Encoding ASCII

@@ -10,19 +10,25 @@ You can edit `config.json` by hand, or use the GUI (`sync.bat --config`). The UI
 
 ```json
 {
-    "working_dir": "C:\\code",
-    "repos": [
-        { "name": "my-repo-a", "path": "my-repo-a",                     "master": "main",   "master_remote": "upstream", "auto_merge": true  },
-        { "name": "my-repo-b", "path": "C:\\code\\my-repo-b",           "master": "master", "master_remote": "origin",   "auto_merge": false },
-        { "name": "my-repo-c", "path": "..\\other-projects\\my-repo-c", "master": "main",   "master_remote": "company",  "auto_merge": false }
-    ],
-    "final_command": "",
-    "max_wait_seconds": 600
+  "config_version": 1,
+  "working_dir": "C:\\code",
+  "repos": [
+    {
+      "name": "my-repo-a",
+      "path": "my-repo-a",
+      "master_remote": "upstream",
+      "master": "main",
+      "auto_merge": true
+    }
+  ],
+  "final_command": "",
+  "max_wait_seconds": 600
 }
 ```
 
 | Field | Type | Description |
 |---|---|---|
+| `config_version` | integer | Persisted configuration schema version. The current schema is `1`; it is independent from the GitHerd application version. |
 | `working_dir` | string | Root folder for relative repo paths and the post-sync command. Leave `""` to fall back to the shell's current directory (preserves pre-1.x behavior). |
 | `repos[].name` | string | Friendly name; also used as the log file name. Must be unique. |
 | `repos[].path` | string | Path to the repo. Absolute or relative to `working_dir`. See [Filling in `path`](#filling-in-path) below. |
@@ -87,3 +93,37 @@ The repository editor has two separate controls:
 Remote choices are discovered with `git -C <repo> remote`. If the repository is unavailable or discovery fails, the saved remote remains selectable and `origin` is included as a fallback. GitHerd does not infer which remote is authoritative.
 
 For backward compatibility, configs without `master_remote` retain the old behavior: auto-merge uses `upstream`, while pull-only uses `origin`. Pull-only configs containing the earlier `pull_remote` field are migrated when saved.
+
+## Schema versions and migration
+
+GitHerd reads all configuration through `lib\config.ps1`. A missing
+`config_version` identifies legacy schema v0. GitHerd migrates v0 to v1 in
+memory, preserves an existing non-empty `master_remote`, otherwise uses
+`pull_remote` for pull-only projects, `upstream` for auto-merge projects, and
+`origin` for other projects. The obsolete `pull_remote` field is removed from
+the current model.
+
+Migrations are sequential: future releases apply every intermediate version
+in order. Invalid, non-positive, non-integer, unsupported, and newer schema
+versions fail explicitly. Reading or importing never rewrites the source;
+Save, Save & Run, and Export persist the current schema.
+
+## Canonical JSON and portable exports
+
+Saved configs, `config.example.json`, and exports use the same canonical JSON:
+UTF-8 without a BOM, two-space indentation, stable property order, no trailing
+whitespace, and one final newline. Writes use a temporary file in the
+destination directory and atomically replace the destination so a failed save
+does not truncate the previous config.
+
+Exports remain versioned v1 configs. They preserve project names, remotes,
+branches, sync modes, the final command, and timeout, but blank `working_dir`
+and every project `path`. Imported files use the normal parse, migration,
+normalization, and validation pipeline before the UI state is replaced.
+
+## Configuration errors
+
+Malformed JSON, missing required project fields, duplicate project names,
+unsafe values, failed migrations, and unsupported schema versions are errors.
+GitHerd reports the schema version and affected field or project instead of
+silently replacing invalid data with an empty config.

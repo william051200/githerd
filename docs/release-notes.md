@@ -6,6 +6,10 @@ Release notes live in the **body of the GitHub Release** attached to a Git tag n
 
 This file is the **template**, not a changelog. Past releases are not duplicated here; read them on the [Releases page](https://github.com/william051200/githerd/releases).
 
+## Current configuration milestone
+
+- **Versioned configuration schema.** Schema v0001 adds integer `config_version: 1`, automatically migrates existing unversioned v0000 configs in memory, writes canonical UTF-8 JSON atomically, and keeps portable exports on the same versioned schema. Schema code now lives in self-contained, zero-padded `lib\config\versions\vNNNN` packages linked by an ordered migration chain and checked by CI.
+
 ## Template
 
 Copy the block below into the GitHub Release body, then fill it in. Delete any section that doesn't apply — don't leave empty headings behind.

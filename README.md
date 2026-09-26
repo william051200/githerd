@@ -56,18 +56,32 @@ GitHerd also pings GitHub at most **once per day after 12:00 PM Malaysia time** 
 
 ```json
 {
-    "working_dir": "C:\\code",
-    "repos": [
-        { "name": "my-repo-a", "path": "my-repo-a",           "master": "main", "master_remote": "upstream", "auto_merge": true  },
-        { "name": "my-repo-b", "path": "C:\\code\\my-repo-b", "master": "main", "master_remote": "origin",   "auto_merge": false }
-    ],
-    "final_command": "",
-    "max_wait_seconds": 600
+  "config_version": 1,
+  "working_dir": "C:\\code",
+  "repos": [
+    {
+      "name": "my-repo-a",
+      "path": "my-repo-a",
+      "master_remote": "upstream",
+      "master": "main",
+      "auto_merge": true
+    },
+    {
+      "name": "my-repo-b",
+      "path": "C:\\code\\my-repo-b",
+      "master_remote": "origin",
+      "master": "main",
+      "auto_merge": false
+    }
+  ],
+  "final_command": "",
+  "max_wait_seconds": 600
 }
 ```
 
 | Field | Quick meaning |
 |---|---|
+| `config_version` | Persisted schema version. Current configs use integer version `1`. |
 | `working_dir` | Optional root folder. Relative repo `path`s are resolved against it, and `final_command` runs from it. Leave `""` to use the shell's current directory. |
 | `name` | Friendly label / log file name. |
 | `path` | Absolute (`C:\code\repo`) or relative to `working_dir` (e.g. `my-repo-a`). |
@@ -84,10 +98,14 @@ Full schema, restrictions, and the relative-path rules: see [`docs/configuration
 
 In the config window, use **↑ Import** / **↓ Export** in the top-right
 of the page header to swap a `githerd-config.json` file with teammates.
-Export writes the full config (repos + post-sync command + timeout); Import
-replaces the current state in memory — click **Save** to commit. Repo
-paths are machine-specific, so after importing GitHerd flags any paths
-that don't exist locally so you can update them before saving.
+Export writes a portable current-schema config, including `config_version`,
+repos, post-sync command, and timeout. It blanks `working_dir` and repo paths;
+Import runs the same migration and validation pipeline as normal loading, then
+replaces the current state in memory — click **Save** to commit.
+
+Existing unversioned configs are treated as legacy schema v0 and migrated in
+memory to v1. Reading never rewrites the source file; the versioned canonical
+format is persisted only when you Save, Save & Run, or Export.
 
 ---
 

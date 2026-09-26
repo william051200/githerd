@@ -136,43 +136,7 @@ namespace Githerd {
 }
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-
-# ---- Config IO --------------------------------------------------------------
-
-function New-DefaultConfig {
-    [pscustomobject]@{
-        working_dir      = ''
-        repos            = @()
-        final_command    = ''
-        max_wait_seconds = 600
-    }
-}
-
-function Load-Config {
-    param([string]$Path)
-    $source = $Path
-    if (-not (Test-Path -LiteralPath $source)) {
-        $example = Join-Path (Split-Path -Parent $source) 'config.example.json'
-        if (Test-Path -LiteralPath $example) { $source = $example }
-        else { return New-DefaultConfig }
-    }
-    try {
-        $raw = Get-Content -LiteralPath $source -Raw -ErrorAction Stop
-        if ([string]::IsNullOrWhiteSpace($raw)) { return New-DefaultConfig }
-        return $raw | ConvertFrom-Json -ErrorAction Stop
-    } catch {
-        [System.Windows.MessageBox]::Show(
-            "Failed to read $Path`n$($_.Exception.Message)`n`nStarting with empty config.",
-            'Config load error', 'OK', 'Warning') | Out-Null
-        return New-DefaultConfig
-    }
-}
-
-function Save-Config {
-    param([string]$Path, $Config)
-    $json = $Config | ConvertTo-Json -Depth 6
-    Set-Content -LiteralPath $Path -Value $json -Encoding UTF8
-}
+. (Join-Path $ScriptDir '..\lib\config.ps1')
 
 # ---- Repo VM (so list bindings update on edit) ------------------------------
 # Use a DependencyObject so the ListBox DataTemplate refreshes when the
@@ -204,25 +168,13 @@ public class GitherdRepoVM : DependencyObject {
 
 function New-RepoVM {
     param($Source)
+    if (-not $Source) { $Source = New-GitHerdRepoConfig }
     $vm = New-Object GitherdRepoVM
-    $vm.name       = if ($Source -and $Source.name)   { [string]$Source.name }   else { '' }
-    $vm.path       = if ($Source -and $Source.path)   { [string]$Source.path }   else { '' }
-    $vm.master     = if ($Source -and $Source.master) { [string]$Source.master } else { 'main' }
-    $auto = $true
-    if ($Source -and $Source.PSObject.Properties.Match('auto_merge').Count -gt 0) {
-        $auto = [bool]$Source.auto_merge
-    }
-    $vm.auto_merge = $auto
-    $masterRemote = if ($auto) { 'upstream' } else { 'origin' }
-    if ($Source -and $Source.PSObject.Properties.Match('master_remote').Count -gt 0 -and
-        -not [string]::IsNullOrWhiteSpace([string]$Source.master_remote)) {
-        $masterRemote = [string]$Source.master_remote
-    } elseif (-not $auto -and $Source -and
-              $Source.PSObject.Properties.Match('pull_remote').Count -gt 0 -and
-              -not [string]::IsNullOrWhiteSpace([string]$Source.pull_remote)) {
-        $masterRemote = [string]$Source.pull_remote
-    }
-    $vm.master_remote = $masterRemote
+    $vm.name          = [string]$Source.name
+    $vm.path          = [string]$Source.path
+    $vm.master        = [string]$Source.master
+    $vm.auto_merge    = [bool]$Source.auto_merge
+    $vm.master_remote = [string]$Source.master_remote
     return $vm
 }
 
@@ -277,21 +229,20 @@ function Set-StateFromConfig {
         if ($null -eq $r) { continue }
         $reposVm.Add((New-RepoVM -Source $r))
     }
-    $workingDir = ''
-    if ($Config -and $Config.PSObject.Properties.Match('working_dir').Count -gt 0 -and $null -ne $Config.working_dir) {
-        $workingDir = [string]$Config.working_dir
-    }
-    $ctl.TxtWorkingDir.Text = $workingDir
+    $ctl.TxtWorkingDir.Text = [string]$Config.working_dir
     $ctl.TxtFinal.Text = [string]$Config.final_command
-    $timeoutInit = 600
-    try { if ($null -ne $Config.max_wait_seconds) { $timeoutInit = [int]$Config.max_wait_seconds } } catch {}
-    if ($timeoutInit -lt 10)    { $timeoutInit = 10 }
-    if ($timeoutInit -gt 86400) { $timeoutInit = 86400 }
-    $ctl.TxtTimeout.Text = [string]$timeoutInit
+    $ctl.TxtTimeout.Text = [string]$Config.max_wait_seconds
     $script:suppressDetailWrite = $false
 }
 
-$config = Load-Config -Path $ConfigPath
+try {
+    $config = Read-GitHerdConfig -Path $ConfigPath
+} catch {
+    [System.Windows.MessageBox]::Show(
+        "Failed to load $ConfigPath`n$($_.Exception.Message)",
+        'Config load error', 'OK', 'Error') | Out-Null
+    exit 1
+}
 Set-StateFromConfig -Config $config
 
 function Update-Count {
@@ -568,14 +519,8 @@ $ctl.BtnExport.Add_Click({
     $dlg.OverwritePrompt  = $true
     if ($dlg.ShowDialog($window) -ne $true) { return }
     try {
-        $exportCfg = $cfg | ConvertTo-Json -Depth 6 | ConvertFrom-Json
-        if ($exportCfg.PSObject.Properties.Match('working_dir').Count -gt 0) {
-            $exportCfg.working_dir = ''
-        }
-        if ($exportCfg.repos) {
-            foreach ($r in $exportCfg.repos) { $r.path = '' }
-        }
-        Save-Config -Path $dlg.FileName -Config $exportCfg
+        $exportCfg = New-GitHerdExportConfig -Config $cfg
+        Write-GitHerdConfig -Path $dlg.FileName -Config $exportCfg
         Show-Info ("Exported to {0}. Working directory and repo paths were not included - recipients will set their own." -f $dlg.FileName)
     } catch {
         Show-Error ("Export failed: " + $_.Exception.Message)
@@ -592,16 +537,9 @@ $ctl.BtnImport.Add_Click({
 
     $imported = $null
     try {
-        $raw = Get-Content -LiteralPath $dlg.FileName -Raw -ErrorAction Stop
-        if ([string]::IsNullOrWhiteSpace($raw)) { throw 'File is empty.' }
-        $imported = $raw | ConvertFrom-Json -ErrorAction Stop
+        $imported = Read-GitHerdConfig -Path $dlg.FileName
     } catch {
         Show-Error ("Import failed: " + $_.Exception.Message)
-        return
-    }
-    if ($null -eq $imported -or
-        $imported.PSObject.Properties.Match('repos').Count -eq 0) {
-        Show-Error "Selected file is not a GitHerd config (missing 'repos' array)."
         return
     }
 
@@ -810,72 +748,42 @@ $ctl.MenuCheckUpdates.Add_Click({
 # ---- Validate + save --------------------------------------------------------
 function Validate-And-Build {
     $repos = @()
-    $names = @{}
-    $i = 0
     foreach ($vm in $reposVm) {
-        $i++
         $name   = ([string]$vm.name).Trim()
         $path   = ([string]$vm.path).Trim()
         $master = ([string]$vm.master).Trim()
 
-        if (-not $name -and -not $path -and -not $master) { continue }
-
-        if (-not $name)   { throw "Repo #${i}: Name is required." }
-        if (-not $path)   { throw "Repo '$name': Path is required." }
-        if (-not $master) { throw "Repo '$name': Master branch is required." }
-        if ($name.Contains('"') -or $path.Contains('"') -or $master.Contains('"')) {
-            throw "Repo '$name': double-quotes (`") are not allowed in any field."
-        }
-        $key = $name.ToLowerInvariant()
-        if ($names.ContainsKey($key)) { throw "Duplicate repository name: '$name'." }
-        $names[$key] = $true
-        $masterRemote = ([string]$vm.master_remote).Trim()
-        if (-not $masterRemote) { $masterRemote = if ($vm.auto_merge) { 'upstream' } else { 'origin' } }
-        if ($masterRemote.StartsWith('-') -or $masterRemote -match '[\s"&|<>^%!()]') {
-            throw "Repo '$name': Master repo '$masterRemote' contains characters that are unsafe for CMD."
-        }
-
         $repos += [pscustomobject]@{
-            name       = $name
-            path       = $path
-            master     = $master
-            auto_merge = [bool]$vm.auto_merge
-            master_remote = $masterRemote
+            name          = $name
+            path          = $path
+            master_remote = ([string]$vm.master_remote).Trim()
+            master        = $master
+            auto_merge    = [bool]$vm.auto_merge
         }
     }
-    if ($repos.Count -eq 0) { throw 'Add at least one repository.' }
 
     $finalCmd = [string]$ctl.TxtFinal.Text
-    if ($finalCmd.Contains('"')) {
-        throw 'Final command may not contain double-quotes (").'
-    }
-
     $workingDir = ([string]$ctl.TxtWorkingDir.Text).Trim()
-    if ($workingDir.Contains('"')) {
-        throw 'Working directory may not contain double-quotes (").'
-    }
 
     $timeout = 600
     if (-not [int]::TryParse($ctl.TxtTimeout.Text, [ref]$timeout)) {
         throw "Worker timeout must be an integer (got '$($ctl.TxtTimeout.Text)')."
     }
-    if ($timeout -lt 10 -or $timeout -gt 86400) {
-        throw "Worker timeout must be between 10 and 86400 seconds."
-    }
 
-    return [pscustomobject]@{
+    return ConvertTo-CurrentGitHerdConfig -ForRuntime -Config ([pscustomobject]@{
+        config_version   = $script:CurrentConfigVersion
         working_dir      = $workingDir
         repos            = $repos
         final_command    = $finalCmd
         max_wait_seconds = $timeout
-    }
+    })
 }
 
 function Try-Save {
     try {
         Push-Detail-To-Vm
         $cfg = Validate-And-Build
-        Save-Config -Path $ConfigPath -Config $cfg
+        Write-GitHerdConfig -Path $ConfigPath -Config $cfg
         Show-Error $null
         return $true
     } catch {

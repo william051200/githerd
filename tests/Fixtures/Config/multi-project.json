@@ -1,22 +1,22 @@
 {
   "config_version": 1,
-  "working_dir": "",
+  "working_dir": "C:\\code",
   "repos": [
     {
-      "name": "my-repo-a",
-      "path": "my-repo-a",
+      "name": "repo-a",
+      "path": "repo-a",
       "master_remote": "upstream",
       "master": "main",
       "auto_merge": true
     },
     {
-      "name": "my-repo-b",
-      "path": "C:\\code\\my-repo-b",
+      "name": "repo-b",
+      "path": "C:\\code\\repo-b",
       "master_remote": "origin",
-      "master": "main",
+      "master": "dev",
       "auto_merge": false
     }
   ],
-  "final_command": "",
+  "final_command": "echo done",
   "max_wait_seconds": 600
 }
