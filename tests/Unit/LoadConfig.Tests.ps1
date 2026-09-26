@@ -117,6 +117,7 @@ Describe 'lib/load-config.ps1' {
             $r = Invoke-Loader -ConfigPath $missing -OutPath $script:OutPath
             $r.ExitCode | Should -Not -Be 0
             $r.StdErr   | Should -Match 'Config file not found'
+            $r.StdErr   | Should -Not -Match 'CategoryInfo|FullyQualifiedErrorId'
         }
 
         It 'exits non-zero on invalid JSON' {
