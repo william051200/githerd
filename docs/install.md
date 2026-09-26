@@ -21,7 +21,7 @@ What it does:
 After it finishes, **open a new terminal** and run:
 
 ```bat
-githerd --config       :: open the GUI and set up your repos
+githerd --config       :: open the GUI and set up your projects
 githerd                :: sync everything in parallel
 ```
 

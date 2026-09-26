@@ -14,6 +14,7 @@
     Variables emitted:
       repos[N].name
       repos[N].path
+      repos[N].dev_remote
       repos[N].master
       repos[N].auto_merge   (true|false)
       repos[N].master_remote
@@ -52,12 +53,14 @@ for ($i = 0; $i -lt $repos.Count; $i++) {
     $path   = [string]$r.path
     $master = [string]$r.master
     $auto   = if ($r.auto_merge) { 'true' } else { 'false' }
+    $devRemote = [string]$r.dev_remote
     $masterRemote = [string]$r.master_remote
 
     $lines.Add("set `"repos[$i].name=$name`"")
     $lines.Add("set `"repos[$i].path=$path`"")
     $lines.Add("set `"repos[$i].master=$master`"")
     $lines.Add("set `"repos[$i].auto_merge=$auto`"")
+    $lines.Add("set `"repos[$i].dev_remote=$devRemote`"")
     $lines.Add("set `"repos[$i].master_remote=$masterRemote`"")
 }
 

@@ -58,7 +58,7 @@
                            Margin="8,0,0,8" />
                 <TextBlock Text="·" Style="{DynamicResource Subhead}"
                            FontSize="20" Margin="14,0,14,0" VerticalAlignment="Center" />
-                <TextBlock Text="Configure repositories and the post-sync command."
+                <TextBlock Text="Configure projects and the post-sync command."
                            Style="{DynamicResource Subhead}" VerticalAlignment="Center" />
             </StackPanel>
         </DockPanel>
@@ -131,7 +131,7 @@
 
                     <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,12">
                         <TextBlock DockPanel.Dock="Left"
-                                   Text="REPOSITORIES" Style="{DynamicResource SectionLabel}"
+                                   Text="PROJECTS" Style="{DynamicResource SectionLabel}"
                                    VerticalAlignment="Center" Margin="0" />
                         <TextBlock x:Name="RepoCount" DockPanel.Dock="Right"
                                    Style="{DynamicResource Subhead}"
@@ -160,7 +160,7 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                        <TextBlock Text="Untitled repository"
+                                        <TextBlock Text="Untitled project"
                                                    Style="{DynamicResource PlaceholderName}"
                                                    TextTrimming="CharacterEllipsis"
                                                    Visibility="Collapsed">
@@ -198,6 +198,14 @@
                                     </TextBlock>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
+                                        <Border Style="{DynamicResource BadgePill}">
+                                            <TextBlock Style="{DynamicResource BadgeTextMuted}">
+                                                <Run Text="dev:&#160;" />
+                                                <Run Text="{Binding dev_remote}" FontWeight="SemiBold"
+                                                     Foreground="{DynamicResource Ink}" />
+                                            </TextBlock>
+                                        </Border>
+
                                         <Border Style="{DynamicResource BadgePill}">
                                             <TextBlock Style="{DynamicResource BadgeTextMuted}">
                                                 <Run Text="master:&#160;" />
@@ -239,7 +247,7 @@
                                                         <Setter Property="Text"       Value="pull only" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding auto_merge}" Value="True">
-                                                                <Setter Property="Text" Value="auto-merge" />
+                                                                <Setter Property="Text" Value="merge" />
                                                                 <Setter Property="Foreground" Value="{DynamicResource PrimaryActive}" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
@@ -255,7 +263,7 @@
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
                         <Button x:Name="BtnAdd"    Style="{DynamicResource SecondaryButtonSmall}"
-                                Content="+ Add repository" />
+                                Content="+ Add project" />
                         <Button x:Name="BtnRemove" Style="{DynamicResource DangerButtonSmall}"
                                 Content="Remove" Margin="8,0,0,0" />
                     </StackPanel>
@@ -295,7 +303,7 @@
                         </Grid>
 
                         <TextBlock Grid.Row="2" Style="{DynamicResource Hint}" Margin="0,4,0,0"
-                                   Text="Root for relative repo paths and the post-sync command. Leave blank to use the shell's current directory." />
+                                   Text="Root for relative project paths and the post-sync command. Leave blank to use the shell's current directory." />
                     </Grid>
                 </Border>
 
@@ -316,10 +324,14 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="SELECTED REPOSITORY" Style="{DynamicResource SectionLabel}" />
+                        <TextBlock Grid.Row="0" Text="SELECTED PROJECT" Style="{DynamicResource SectionLabel}" />
 
                         <TextBlock Grid.Row="1" Text="Name" Style="{DynamicResource FieldLabel}" />
                         <TextBox  x:Name="TxtName" Grid.Row="2" Style="{DynamicResource TextBoxStyle}" />
@@ -338,23 +350,37 @@
                         <TextBlock Grid.Row="5" Style="{DynamicResource Hint}" Margin="0,4,0,0"
                                    Text="Absolute path, or a name/relative path under the working directory above." />
 
-                        <TextBlock Grid.Row="6" Text="Master repo"
+                        <TextBlock Grid.Row="6" Text="Development repo"
                                    Style="{DynamicResource FieldLabel}" Margin="0,12,0,4" />
-                        <ComboBox x:Name="CmbMasterRemote" Grid.Row="7"
+                        <ComboBox x:Name="CmbDevRemote" Grid.Row="7"
                                   Style="{DynamicResource ComboBoxStyle}"
-                                  ToolTip="Choose the remote that owns the latest code." />
+                                  DisplayMemberPath="Display"
+                                  SelectedValuePath="Name"
+                                  ToolTip="Destination remote that receives the updated master branch." />
                         <TextBlock Grid.Row="8" Style="{DynamicResource Hint}" Margin="0,4,0,0"
-                                   Text="Available remotes are discovered from this repository." />
+                                   Text="Destination remote that receives the updated master branch." />
 
-                        <TextBlock Grid.Row="9" Text="Master branch"
+                        <TextBlock Grid.Row="9" Text="Master repo"
                                    Style="{DynamicResource FieldLabel}" Margin="0,12,0,4" />
-                        <TextBox x:Name="TxtMaster" Grid.Row="10"
-                                 Style="{DynamicResource TextBoxStyle}"
-                                 VerticalAlignment="Top" />
+                        <ComboBox x:Name="CmbMasterRemote" Grid.Row="10"
+                                  Style="{DynamicResource ComboBoxStyle}"
+                                  DisplayMemberPath="Display"
+                                  SelectedValuePath="Name"
+                                  ToolTip="Choose the remote that owns the latest code." />
+                        <TextBlock Grid.Row="11" Style="{DynamicResource Hint}" Margin="0,4,0,0"
+                                   Text="Source remote that provides the latest master branch." />
 
-                        <CheckBox x:Name="ChkAutoMerge" Grid.Row="11"
+                        <TextBlock Grid.Row="12" Text="Master branch"
+                                   Style="{DynamicResource FieldLabel}" Margin="0,12,0,4" />
+                        <ComboBox x:Name="CmbMaster" Grid.Row="13"
+                                  Style="{DynamicResource ComboBoxStyle}"
+                                  ToolTip="Choose a local branch." />
+                        <TextBlock Grid.Row="14" Style="{DynamicResource Hint}" Margin="0,4,0,0"
+                                   Text="Local branches are discovered from this project." />
+
+                        <CheckBox x:Name="ChkAutoMerge" Grid.Row="15"
                                   Style="{DynamicResource CheckBoxStyle}"
-                                  Content="Auto-merge latest code into the configured master branch"
+                                  Content="Merge into development repo, master branch"
                                   Margin="0,12,0,0" />
                         </Grid>
                     </ScrollViewer>
@@ -366,11 +392,11 @@
                         Margin="0,14,0,0"
                         Visibility="Collapsed">
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <TextBlock Text="No repository selected"
+                        <TextBlock Text="No project selected"
                                    FontFamily="{DynamicResource FontDisplay}"
                                    FontSize="18" FontWeight="SemiBold"
                                    HorizontalAlignment="Center" />
-                        <TextBlock Text="Pick a repository on the left, or add a new one."
+                        <TextBlock Text="Pick a project on the left, or add a new one."
                                    Style="{DynamicResource Subhead}"
                                    Margin="0,6,0,0" HorizontalAlignment="Center" />
                     </StackPanel>
@@ -410,7 +436,7 @@
                                  VerticalScrollBarVisibility="Auto" />
 
                         <TextBlock Grid.Row="2" Style="{DynamicResource Hint}" Margin="0,4,0,0"
-                                   Text="Single line — wraps for readability. Runs once after every repo finishes." />
+                                   Text="Single line — wraps for readability. Runs once after every project finishes." />
                     </Grid>
                 </Border>
             </Grid>

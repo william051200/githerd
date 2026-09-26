@@ -9,18 +9,20 @@ BeforeAll {
         param(
             [string]$Name = 'repo-a',
             [string]$Path = 'repo-a',
+            [string]$DevRemote = 'origin',
             [string]$Remote = 'upstream',
             [string]$Master = 'main',
             [bool]$AutoMerge = $true
         )
 
         [pscustomobject]@{
-            config_version   = 1
+            config_version   = 2
             working_dir      = 'C:\code'
             repos            = @(
                 [pscustomobject]@{
                     name          = $Name
                     path          = $Path
+                    dev_remote    = $DevRemote
                     master_remote = $Remote
                     master        = $Master
                     auto_merge    = $AutoMerge
@@ -46,7 +48,7 @@ Describe 'GitHerd config versioning and migrations' {
         . $script:ConfigModule
     }
 
-    It 'treats an unversioned config as v0000 and migrates it to v0001' {
+    It 'treats an unversioned config as v0000 and migrates it through v0002' {
         $legacy = [pscustomobject]@{
             working_dir = 'C:\code'
             repos = @(
@@ -59,13 +61,35 @@ Describe 'GitHerd config versioning and migrations' {
 
         $result = ConvertTo-CurrentGitHerdConfig -Config $legacy -ForRuntime
 
-        $result.config_version | Should -Be 1
+        $result.config_version | Should -Be 2
+        @($result.repos.dev_remote) | Should -Be @('origin', 'origin', 'origin', 'origin')
         @($result.repos.master_remote) | Should -Be @('company', 'mirror', 'upstream', 'origin')
         foreach ($repo in $result.repos) {
             $repo.PSObject.Properties.Name | Should -Not -Contain 'pull_remote'
         }
         $result.final_command | Should -Be ''
         $result.max_wait_seconds | Should -Be 600
+    }
+
+    It 'migrates v0001 directly to v0002 and preserves a saved development remote' {
+        $v1 = [pscustomobject]@{
+            config_version = 1
+            working_dir = 'C:\code'
+            repos = @(
+                [pscustomobject]@{
+                    name='repo-a'; path='repo-a'; dev_remote='fork'
+                    master_remote='upstream'; master='main'; auto_merge=$true
+                }
+            )
+            final_command = ''
+            max_wait_seconds = 600
+        }
+
+        $result = ConvertTo-CurrentGitHerdConfig -Config $v1 -ForRuntime
+
+        $result.config_version | Should -Be 2
+        $result.repos[0].dev_remote | Should -Be 'fork'
+        $result.repos[0].master_remote | Should -Be 'upstream'
     }
 
     It 'runs every intermediate migration exactly once and in order' {
@@ -114,12 +138,12 @@ Describe 'GitHerd config versioning and migrations' {
 
     It 'does not migrate current-version input again' {
         $handler = [pscustomobject]@{
-            SourceVersion = 0
-            TargetVersion = 1
+            SourceVersion = 1
+            TargetVersion = 2
             Next = $null
             Migrate = { throw 'must not run' }
         }
-        { Invoke-GitHerdMigrationChain -Handler $handler -Config (New-TestConfig) -CurrentVersion 1 } |
+        { Invoke-GitHerdMigrationChain -Handler $handler -Config (New-TestConfig) -CurrentVersion 2 } |
             Should -Not -Throw
     }
 
@@ -136,7 +160,7 @@ Describe 'GitHerd config versioning and migrations' {
         @{ Version = '1'; Message = '*positive integer*' }
         @{ Version = 0; Message = '*positive integer*' }
         @{ Version = -1; Message = '*positive integer*' }
-        @{ Version = 2; Message = '*newer GitHerd version is required*' }
+        @{ Version = 3; Message = '*newer GitHerd version is required*' }
     ) {
         $cfg = New-TestConfig
         $cfg.config_version = $Version
@@ -155,6 +179,7 @@ Describe 'GitHerd config versioning and migrations' {
             }
         }
         $source = New-TestConfig
+        $source.config_version = 1
 
         { Invoke-GitHerdMigrationChain -Handler $handler -Config $source -CurrentVersion 2 } |
             Should -Throw '*planned failure*'
@@ -171,12 +196,20 @@ Describe 'GitHerd config versioning and migrations' {
             (Get-GitHerdConfigMigrationV0000ToV0001),
             (Get-GitHerdConfigMigrationV0000ToV0001)
         ) | Should -BeTrue
+        [object]::ReferenceEquals(
+            (Get-GitHerdConfigSchemaV0002),
+            (Get-GitHerdConfigSchemaV0002)
+        ) | Should -BeTrue
+        [object]::ReferenceEquals(
+            (Get-GitHerdConfigMigrationV0001ToV0002),
+            (Get-GitHerdConfigMigrationV0001ToV0002)
+        ) | Should -BeTrue
     }
 
     It 'derives the current version from the highest discovered package' {
         $packages = @(Get-GitHerdVersionPackages -VersionsPath (Join-Path $script:RepoRoot 'lib\config\versions'))
 
-        $packages.Name | Should -Be @('v0001')
+        $packages.Name | Should -Be @('v0001', 'v0002')
         $script:CurrentConfigVersion | Should -Be $packages[-1].Version
         (Get-CurrentGitHerdConfigSchema).Version | Should -Be $packages[-1].Version
     }
@@ -184,7 +217,7 @@ Describe 'GitHerd config versioning and migrations' {
     It 'keeps schema-specific field names out of the core engine' {
         $coreText = Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'lib\config\core') -Filter '*.ps1' |
             ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }
-        ($coreText -join "`n") | Should -Not -Match '\b(master_remote|auto_merge|max_wait_seconds)\b'
+        ($coreText -join "`n") | Should -Not -Match '\b(dev_remote|master_remote|auto_merge|max_wait_seconds)\b'
     }
 }
 
@@ -195,7 +228,7 @@ Describe 'GitHerd config validation and reading' {
 
     It 'reads config.example.json as a valid current runtime config' {
         $config = Read-GitHerdConfig -Path (Join-Path $script:RepoRoot 'config.example.json') -ForRuntime
-        $config.config_version | Should -Be 1
+        $config.config_version | Should -Be 2
         $config.repos.Count | Should -Be 2
     }
 
@@ -209,7 +242,7 @@ Describe 'GitHerd config validation and reading' {
     It 'rejects duplicate names case-insensitively' {
         $cfg = New-TestConfig
         $cfg.repos += [pscustomobject]@{
-            name='REPO-A'; path='other'; master_remote='origin'; master='main'; auto_merge=$false
+            name='REPO-A'; path='other'; dev_remote='origin'; master_remote='origin'; master='main'; auto_merge=$false
         }
 
         { ConvertTo-CurrentGitHerdConfig -Config $cfg -ForRuntime } | Should -Throw '*case-insensitively unique*'
@@ -232,6 +265,7 @@ Describe 'GitHerd config validation and reading' {
 
     It 'rejects unsafe remotes, double quotes, and invalid timeouts' -ForEach @(
         @{ Mutate = { param($c) $c.repos[0].master_remote = 'bad&remote' }; Message = '*master_remote*unsafe for CMD*' }
+        @{ Mutate = { param($c) $c.repos[0].dev_remote = 'bad&remote' }; Message = '*dev_remote*unsafe for CMD*' }
         @{ Mutate = { param($c) $c.working_dir = 'C:\bad"dir' }; Message = '*working_dir*double-quote*' }
         @{ Mutate = { param($c) $c.max_wait_seconds = 9 }; Message = '*between 10 and 86400*' }
         @{ Mutate = { param($c) $c.max_wait_seconds = '600' }; Message = '*must be an integer*' }
@@ -259,7 +293,7 @@ Describe 'GitHerd canonical JSON and file handling' {
             Config = {
                 $cfg = New-TestConfig
                 $cfg.repos += [pscustomobject]@{
-                    name='repo-b'; path='C:\code\repo-b'; master_remote='origin'; master='dev'; auto_merge=$false
+                    name='repo-b'; path='C:\code\repo-b'; dev_remote='work'; master_remote='origin'; master='dev'; auto_merge=$false
                 }
                 $cfg
             }
@@ -298,10 +332,11 @@ Describe 'GitHerd canonical JSON and file handling' {
         $source = New-TestConfig -Path 'C:\code\repo-a'
         $export = New-GitHerdExportConfig -Config $source
 
-        $export.config_version | Should -Be 1
+        $export.config_version | Should -Be 2
         $export.working_dir | Should -Be ''
         $export.repos[0].path | Should -Be ''
         $export.repos[0].master_remote | Should -Be 'upstream'
+        $export.repos[0].dev_remote | Should -Be 'origin'
         $export.final_command | Should -Be 'echo done'
         $source.working_dir | Should -Be 'C:\code'
         $source.repos[0].path | Should -Be 'C:\code\repo-a'

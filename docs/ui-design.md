@@ -12,7 +12,7 @@ The configuration UI (`sync.bat --config`) is built with **WPF + XAML**, hosted 
 | File | Role |
 |---|---|
 | [`ui/config-ui.ps1`](../ui/config-ui.ps1) | Host script. Loads the XAML, wires events, validates and writes `config.json`, returns the exit code `sync.bat` keys off. |
-| [`ui/MainWindow.xaml`](../ui/MainWindow.xaml) | Window layout: header → optional error banner → repo list + detail editor → post-sync command card → footer buttons. |
+| [`ui/MainWindow.xaml`](../ui/MainWindow.xaml) | Window layout: header → optional error banner → project list + detail editor → post-sync command card → footer buttons. |
 | [`ui/Theme.xaml`](../ui/Theme.xaml) | Resource dictionary holding all design tokens (colors, radii, typography) plus templated styles for buttons, text boxes, list boxes, and the card containers. |
 
 `Theme.xaml` is merged into the window's resources at runtime (`Window.Resources.MergedDictionaries.Add(theme)`). `MainWindow.xaml` therefore uses **`DynamicResource`** lookups, not `StaticResource`, so styles resolve after the merge.
@@ -34,7 +34,7 @@ The configuration UI (`sync.bat --config`) is built with **WPF + XAML**, hosted 
 | `button-primary` | `PrimaryButton` | Coral fill, white text, darkens on hover/press |
 | `button-secondary` | `SecondaryButton` / `SecondaryButtonSmall` | Cream fill, hairline border, coral border on hover |
 | `feature-card` | `Card` style on `Border` | Surface-card background, hairline border, 12px radius |
-| `badge-pill` | `BadgePill` / `BadgePillCoral` | Squarer chip badges (5px corner radius) with surface-card or coral-washed fill, used for the per-repo branch + merge-mode indicators in the list |
+| `badge-pill` | `BadgePill` / `BadgePillCoral` | Squarer chip badges (5px corner radius) with surface-card or coral-washed fill, used for the per-project remote, branch, and merge-mode indicators in the list |
 
 ## Font substitutions
 
@@ -52,23 +52,25 @@ If you have the licensed fonts installed, edit the `FontDisplay` / `FontBody` re
 
 The previous WinForms UI used a `DataGridView`. That control's cell-editor needs a double-click or F2 to enter edit mode, drops edits when focus shifts, and treats checkboxes awkwardly. The new UI is a **list + detail form**:
 
-* Left card — a `ListBox` of repos rendered as 3-line cards: name,
-  path, and chip badges showing the branch, selected master remote, and
-  `auto-merge` / `pull only` mode.
-* Right card — proper `TextBox` controls, a themed **Master repo**
-  `ComboBox` populated from Git remotes, and a separate auto-merge
-  `CheckBox`. Edits push back to the list-bound view-model as they change.
+* Left card — a `ListBox` of projects rendered as cards with name, path,
+  Development repo, Master repo, branch, and `merge` / `pull only` badges.
+* Right card — text fields plus themed **Development repo**, **Master repo**,
+  and **Master branch** `ComboBox` controls and a separate merge `CheckBox`.
+  Edits push back to the list-bound view-model as they change.
 
-If remote discovery is unavailable, the selector retains the saved remote and
-adds `origin` as a fallback. This keeps imported and temporarily unavailable
-repositories editable without treating discovery as validation.
+Remote options come from `git remote -v`; Development repo display prefers the
+push URL and Master repo display prefers the fetch URL. Branch options come
+from `git branch --format=%(refname:short)`. If discovery is unavailable,
+selectors retain saved values and add their schema fallbacks, keeping imported
+and temporarily unavailable projects editable without treating discovery as
+validation.
 
-The detail pane and repository list use narrow, rounded scroll thumbs instead
+The detail pane and project list use narrow, rounded scroll thumbs instead
 of the default Windows scrollbar chrome. The remote dropdown uses the same
 cream surface, coral focus ring, rounded corners, and hover states as the
 existing text inputs.
 
-`+ Add repository` adds a new entry that shows *Untitled repository* in italic muted text until you give it a name; this avoids the "phantom blank row" feeling and the validator skips fully-empty entries on Save automatically. `Remove` drops the selected repo. Validation surfaces in a coral-tinted banner at the top of the window — never a `MessageBox` popup.
+`+ Add project` adds a new entry that shows *Untitled project* in italic muted text until you give it a name. `Remove` drops the selected project. Validation surfaces in a coral-tinted banner at the top of the window — never a `MessageBox` popup.
 
 ## Post-sync command field
 
@@ -78,11 +80,11 @@ The input box (`TxtFinal`) is therefore a single-line `TextBox` with `AcceptsRet
 
 ## Sharing your config (Import / Export)
 
-The header of the window has **↑ Import** and **↓ Export** buttons (`BtnImport`, `BtnExport`) that round-trip the full config — `repos[]`, `final_command`, `max_wait_seconds` — through a plain `.json` file. They sit in the page header (not the *Repositories* card) because they act on the whole config, not just the repo list. The on-disk shape is identical to `config.json`, so any exported file is also a valid drop-in replacement for it.
+The header of the window has **↑ Import** and **↓ Export** buttons (`BtnImport`, `BtnExport`) that round-trip the full config — `repos[]`, `final_command`, `max_wait_seconds` — through a plain `.json` file. They sit in the page header (not the *Projects* card) because they act on the whole config, not just the project list. The on-disk shape is identical to `config.json`, so any exported file is also a valid drop-in replacement for it.
 
 - **Export** runs `Validate-And-Build` first, so an exported file is guaranteed to be a valid config (the same checks `Save` runs). Default filename: `githerd-config.json`, default folder: the user's Documents.
 - **Import** parses the JSON, sanity-checks that a `repos` array exists, and confirms before replacing a non-empty list. Loaded data goes through the shared `Set-StateFromConfig` helper that also handles initial load, so defaults / clamping (timeout 10–86400) are applied identically.
-- Imported state is **not auto-saved** — it sits in the editor so the user can fix machine-specific paths first. After import, GitHerd does a `Test-Path` on every repo path and surfaces missing ones in the banner (truncated at five names + "+N more"). Successful import with no missing paths shows `Imported from <file>`.
+- Imported state is **not auto-saved** — it sits in the editor so the user can fix machine-specific paths first. After import, GitHerd does a `Test-Path` on every project path and surfaces missing ones in the banner (truncated at five names + "+N more"). Successful import with no missing paths shows `Imported from <file>`.
 
 The banner doubles as an info channel: `Show-Info` reuses `ErrorBox` but swaps `ErrorText.Foreground` from `Danger` to `Ink` so success messages don't read as errors.
 
